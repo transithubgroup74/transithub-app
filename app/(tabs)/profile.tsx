@@ -6,11 +6,11 @@ import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const MENU = [
-  { icon: '👤', label: 'Personal Information' },
-  { icon: '💳', label: 'Payment Methods' },
-  { icon: '🔖', label: 'My Saved Routes' },
-  { icon: '🔔', label: 'Notification Settings' },
-  { icon: '❓', label: 'Help and Support' },
+  { icon: '👤', label: 'Personal Information', route: '/screens/edit-profile' },
+  { icon: '🎫', label: 'My Tickets', route: '/(tabs)/tickets' },
+  { icon: '🔔', label: 'Notifications', route: '/(tabs)/notifications' },
+  { icon: '🗺️', label: 'All Routes', route: '/screens/all-routes' },
+  { icon: '❓', label: 'Help and Support', route: null },
 ];
 
 export default function Profile() {
@@ -18,25 +18,45 @@ export default function Profile() {
   const [name, setName] = useState('Traveller');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [tripCount, setTripCount] = useState(0);
+  const [monthCount, setMonthCount] = useState(0);
 
   useEffect(() => {
-    AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone']).then((res) => {
-      if (res[0][1]) setName(res[0][1]);
-      if (res[1][1]) setEmail(res[1][1]);
-      if (res[2][1]) setPhone(res[2][1]);
-    });
+    loadProfile();
   }, []);
+
+  const loadProfile = async () => {
+    const res = await AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone', 'localBookings']);
+    if (res[0][1]) setName(res[0][1]);
+    if (res[1][1]) setEmail(res[1][1]);
+    if (res[2][1]) setPhone(res[2][1]);
+    if (res[3][1]) {
+      const bookings = JSON.parse(res[3][1]);
+      setTripCount(bookings.length);
+      const now = new Date();
+      const thisMonth = bookings.filter((b: any) => {
+        const d = new Date(b.createdAt);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+      setMonthCount(thisMonth.length);
+    }
+  };
 
   const signOut = () => {
     Alert.alert('Sign Out', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out', style: 'destructive', onPress: async () => {
-          await AsyncStorage.multiRemove(['token', 'userName', 'userEmail']);
+          await AsyncStorage.multiRemove(['token', 'userName', 'userEmail', 'userPhone']);
           router.replace('/(auth)/welcome');
         },
       },
     ]);
+  };
+
+  const handleMenu = (route: string | null) => {
+    if (!route) return Alert.alert('Help & Support', 'Email us at support@transithub.com.gh\nor call 0800-TRANSIT');
+    router.push(route as any);
   };
 
   const initials = name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
@@ -58,16 +78,20 @@ export default function Profile() {
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <Text style={styles.name}>{name}</Text>
-          <Text style={styles.email}>{email}</Text>
+          {email ? <Text style={styles.email}>{email}</Text> : null}
           {phone ? <Text style={styles.phone}>{phone}</Text> : null}
-          <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/screens/edit-profile')}>
+          <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/screens/edit-profile' as any)}>
             <Text style={styles.editBtnText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          {[{ label: 'Total Trips', val: '0' }, { label: 'This Month', val: '0' }, { label: 'Saved Routes', val: '5' }].map((s, i) => (
+          {[
+            { label: 'Total Trips', val: String(tripCount) },
+            { label: 'This Month', val: String(monthCount) },
+            { label: 'Saved Routes', val: '10' },
+          ].map((s, i) => (
             <View key={i} style={styles.statCard}>
               <Text style={styles.statVal}>{s.val}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
@@ -78,8 +102,11 @@ export default function Profile() {
         {/* Menu */}
         <View style={[styles.card, { padding: 0 }]}>
           {MENU.map((m, i) => (
-            <TouchableOpacity key={i} style={[styles.menuRow, i === MENU.length - 1 && { borderBottomWidth: 0 }]}
-              onPress={() => { if (i === 0) router.push('/screens/edit-profile'); }}>
+            <TouchableOpacity
+              key={i}
+              style={[styles.menuRow, i === MENU.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => handleMenu(m.route)}
+            >
               <Text style={{ fontSize: 18, width: 28 }}>{m.icon}</Text>
               <Text style={styles.menuLabel}>{m.label}</Text>
               <Text style={styles.chevron}>›</Text>
@@ -87,8 +114,11 @@ export default function Profile() {
           ))}
         </View>
 
+        {/* App version */}
+        <Text style={styles.version}>TransitHub v1.0.0 · Ghana's Intercity Travel App</Text>
+
         <TouchableOpacity style={styles.signOut} onPress={signOut}>
-          <Text style={styles.signOutText}>← Sign Out</Text>
+          <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -101,20 +131,21 @@ const styles = StyleSheet.create({
   back: { fontSize: 22, color: colors.gold, padding: 4 },
   title: { flex: 1, textAlign: 'center', fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
-  avatar: { width: 64, height: 64, backgroundColor: colors.navy, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  avatarText: { fontFamily: 'DMSans_500Medium', fontSize: 20, color: colors.gold },
-  name: { fontFamily: 'DMSans_500Medium', fontSize: 17, color: colors.text, marginBottom: 4 },
-  email: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.gold, marginBottom: 4 },
+  avatar: { width: 72, height: 72, backgroundColor: colors.navy, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 10, borderWidth: 2, borderColor: colors.gold },
+  avatarText: { fontFamily: 'DMSans_500Medium', fontSize: 24, color: colors.gold },
+  name: { fontFamily: 'DMSans_500Medium', fontSize: 18, color: colors.text, marginBottom: 4 },
+  email: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.gold, marginBottom: 2 },
   phone: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2, marginBottom: 4 },
-  editBtn: { borderWidth: 1, borderColor: colors.gold, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 20, marginTop: 6 },
+  editBtn: { borderWidth: 1, borderColor: colors.gold, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 20, marginTop: 8 },
   editBtnText: { fontFamily: 'DMSans_500Medium', fontSize: 12, color: colors.gold },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   statCard: { flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 12, alignItems: 'center' },
-  statVal: { fontFamily: 'DMSans_500Medium', fontSize: 20, color: colors.gold },
-  statLabel: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2 },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderBottomWidth: 1, borderBottomColor: 'rgba(27,58,107,0.25)' },
+  statVal: { fontFamily: 'DMSans_500Medium', fontSize: 22, color: colors.gold },
+  statLabel: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2, textAlign: 'center' },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(27,58,107,0.25)' },
   menuLabel: { flex: 1, fontFamily: 'DMSans_400Regular', fontSize: 14, color: colors.text },
   chevron: { color: colors.text2, fontSize: 18 },
-  signOut: { borderWidth: 1, borderColor: colors.red, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  version: { textAlign: 'center', fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2, marginVertical: 12 },
+  signOut: { borderWidth: 1, borderColor: colors.red, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   signOutText: { fontFamily: 'DMSans_500Medium', fontSize: 15, color: colors.red },
 });

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +10,29 @@ export default function Awaiting() {
   const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string; op: string; dep: string; arr: string; date: string; busClass: string }>();
   const [seconds, setSeconds] = useState(150);
   const timerRef = useRef<any>(null);
+
+  const saveBookingLocally = async () => {
+    try {
+      const existing = await AsyncStorage.getItem('localBookings');
+      const bookings = existing ? JSON.parse(existing) : [];
+      const newBooking = {
+        id: 'LOCAL-' + Date.now(),
+        status: 'confirmed',
+        totalAmount: parseFloat(p.total || '0'),
+        seatNumber: p.seat,
+        createdAt: new Date().toISOString(),
+        schedule: {
+          departsAt: p.date + 'T' + (p.dep || '00:00') + ':00',
+          route: { origin: p.from, destination: p.to },
+        },
+        operator: p.op,
+        busClass: p.busClass,
+        arrivalTime: p.arr,
+      };
+      bookings.unshift(newBooking);
+      await AsyncStorage.setItem('localBookings', JSON.stringify(bookings));
+    } catch (_) {}
+  };
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -22,9 +46,9 @@ export default function Awaiting() {
       });
     }, 1000);
 
-    // Auto confirm after 3s
-    const confirm = setTimeout(() => {
+    const confirm = setTimeout(async () => {
       clearInterval(timerRef.current);
+      await saveBookingLocally();
       router.replace({ pathname: '/screens/confirmed', params: p });
     }, 3000);
 

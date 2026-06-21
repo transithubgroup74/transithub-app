@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bookings } from '../../services/api';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,11 +13,26 @@ export default function Tickets() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    bookings.getMine()
-      .then((res) => setMyBookings(res.data))
-      .catch(() => setMyBookings([]))
-      .finally(() => setLoading(false));
+    loadBookings();
   }, []);
+
+  const loadBookings = async () => {
+    try {
+      const [apiRes, localRaw] = await Promise.allSettled([
+        bookings.getMine(),
+        AsyncStorage.getItem('localBookings'),
+      ]);
+      const apiData = apiRes.status === 'fulfilled' ? (apiRes.value.data || []) : [];
+      const localData = localRaw.status === 'fulfilled' && localRaw.value ? JSON.parse(localRaw.value) : [];
+      setMyBookings([...localData, ...apiData]);
+    } catch {
+      const localRaw = await AsyncStorage.getItem('localBookings').catch(() => null);
+      setMyBookings(localRaw ? JSON.parse(localRaw) : []);
+    } finally {
+      setLoading(false);
+    }
+    setTimeout(() => setLoading(false), 3000);
+  };
 
   const filtered = myBookings.filter((b) => {
     if (tab === 'upcoming') return b.status === 'confirmed' || b.status === 'pending';
@@ -61,15 +77,32 @@ export default function Tickets() {
           </View>
         ) : (
           filtered.map((b, i) => (
-            <TouchableOpacity key={i} style={styles.ticketCard} onPress={() => router.push({ pathname: '/screens/ticket-detail', params: { id: b.id } })}>
+            <TouchableOpacity
+              key={i}
+              style={styles.ticketCard}
+              onPress={() => router.push({ pathname: '/screens/ticket-detail', params: { id: b.id } })}
+            >
               <View style={styles.ticketRow}>
-                <Text style={styles.route}>{b.schedule?.route?.origin} → {b.schedule?.route?.destination}</Text>
+                <Text style={styles.route}>
+                  {b.schedule?.route?.origin} → {b.schedule?.route?.destination}
+                </Text>
                 <View style={[styles.badge, { backgroundColor: b.status === 'confirmed' ? 'rgba(0,201,167,0.15)' : 'rgba(201,168,76,0.15)' }]}>
-                  <Text style={[styles.badgeText, { color: b.status === 'confirmed' ? colors.green : colors.gold }]}>{b.status.toUpperCase()}</Text>
+                  <Text style={[styles.badgeText, { color: b.status === 'confirmed' ? colors.green : colors.gold }]}>
+                    {b.status.toUpperCase()}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.meta}>📅 {b.schedule?.departsAt?.slice(0, 10)} &nbsp; 💺 Seat {b.seatNumber}</Text>
-              <Text style={styles.amount}>GHS {b.totalAmount?.toFixed(2)}</Text>
+              <Text style={styles.meta}>
+                📅 {b.schedule?.departsAt?.slice(0, 10)}  💺 Seat {b.seatNumber}
+              </Text>
+              <View style={styles.ticketFooter}>
+                <Text style={styles.amount}>GHS {parseFloat(b.totalAmount || 0).toFixed(2)}</Text>
+                {b.busClass && (
+                  <View style={styles.classBadge}>
+                    <Text style={styles.classText}>{b.busClass.toUpperCase()}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           ))
         )}
@@ -97,6 +130,9 @@ const styles = StyleSheet.create({
   route: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.text },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   badgeText: { fontFamily: 'DMSans_500Medium', fontSize: 10 },
-  meta: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, marginBottom: 4 },
+  meta: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, marginBottom: 6 },
+  ticketFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   amount: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.gold },
+  classBadge: { backgroundColor: 'rgba(27,58,107,0.4)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  classText: { fontFamily: 'DMSans_500Medium', fontSize: 10, color: colors.text2 },
 });
