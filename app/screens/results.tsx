@@ -1,32 +1,95 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { schedules } from '../../services/api';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const REG_BUSES = [
-  { op: 'VIP Bus Service', dep: '05:00 AM', arr: '10:30 AM', dur: '5h 30m', seats: 12, price: 80, color: '#DC2626', abbr: 'VIP', type: 'Standard Coach' },
-  { op: 'GPRTU', dep: '06:30 AM', arr: '12:00 PM', dur: '5h 30m', seats: 8, price: 75, color: '#D97706', abbr: 'GP', type: 'Standard Coach' },
-  { op: 'OA Travel & Tours', dep: '08:00 AM', arr: '01:30 PM', dur: '5h 30m', seats: 23, price: 78, color: '#2563EB', abbr: 'OA', type: 'Standard Coach' },
-  { op: 'Metro Mass Transit', dep: '10:00 AM', arr: '03:30 PM', dur: '5h 30m', seats: 31, price: 70, color: '#16A34A', abbr: 'MM', type: 'Standard Coach' },
-  { op: 'Intercity STC', dep: '12:00 PM', arr: '05:30 PM', dur: '5h 30m', seats: 18, price: 76, color: '#7C3AED', abbr: 'STC', type: 'Standard Coach' },
-  { op: 'Neoplan Ghana', dep: '02:00 PM', arr: '07:30 PM', dur: '5h 30m', seats: 40, price: 72, color: '#0891B2', abbr: 'NEO', type: 'Standard Coach' },
+// Fallback mock data when API is unreachable
+const MOCK_REG = [
+  { id: 'mock-r1', op: 'VIP Jeoun', dep: '06:00 AM', arr: '11:30 AM', dur: '5h 30m', seats: 12, price: 80, color: '#DC2626', abbr: 'VIP', type: 'Standard Coach' },
+  { id: 'mock-r2', op: 'OA Express', dep: '09:00 AM', arr: '02:30 PM', dur: '5h 30m', seats: 23, price: 78, color: '#2563EB', abbr: 'OA', type: 'Standard Coach' },
+  { id: 'mock-r3', op: 'STC Coaches', dep: '01:00 PM', arr: '06:30 PM', dur: '5h 30m', seats: 18, price: 76, color: '#7C3AED', abbr: 'STC', type: 'Standard Coach' },
+  { id: 'mock-r4', op: 'Kingdom Transport', dep: '05:00 PM', arr: '10:30 PM', dur: '5h 30m', seats: 40, price: 72, color: '#0891B2', abbr: 'KT', type: 'Standard Coach' },
+];
+const MOCK_EXEC = [
+  { id: 'mock-e1', op: 'VIP Jeoun Executive', dep: '06:00 AM', arr: '10:30 AM', dur: '4h 30m', seats: 6, price: 150, color: '#C9A84C', abbr: 'VE', type: 'Luxury Coach' },
+  { id: 'mock-e2', op: 'Kingdom Executive', dep: '09:00 AM', arr: '01:30 PM', dur: '4h 30m', seats: 14, price: 145, color: '#0891B2', abbr: 'KE', type: 'Luxury Coach' },
 ];
 
-const EXEC_BUSES = [
-  { op: 'VIP Jeoun Executive', dep: '06:00 AM', arr: '10:30 AM', dur: '4h 30m', seats: 6, price: 150, color: '#C9A84C', abbr: 'VE', type: 'Luxury Coach' },
-  { op: 'STC Luxury', dep: '07:30 AM', arr: '12:00 PM', dur: '4h 30m', seats: 4, price: 160, color: '#7C3AED', abbr: 'SL', type: 'Luxury Coach' },
-  { op: 'Kingdom Transport', dep: '09:00 AM', arr: '01:30 PM', dur: '4h 30m', seats: 14, price: 145, color: '#0891B2', abbr: 'KT', type: 'Luxury Coach' },
-  { op: 'Dreamway Transport', dep: '11:00 AM', arr: '03:30 PM', dur: '4h 30m', seats: 9, price: 155, color: '#9333EA', abbr: 'DT', type: 'Luxury Coach' },
-];
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('en-GH', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+function addHours(dateStr: string, hours: number) {
+  const d = new Date(dateStr);
+  d.setHours(d.getHours() + hours);
+  return d.toLocaleTimeString('en-GH', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+function getAbbr(name: string) {
+  return name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 3);
+}
+
+const COLORS = ['#DC2626', '#2563EB', '#7C3AED', '#0891B2', '#C9A84C', '#16A34A', '#D97706', '#9333EA'];
 
 export default function Results() {
   const router = useRouter();
   const { from, to, date, busClass: initClass } = useLocalSearchParams<{ from: string; to: string; date: string; busClass: string }>();
   const [tab, setTab] = useState<'Regular' | 'Executive'>((initClass as any) || 'Regular');
+  const [allSchedules, setAllSchedules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usingMock, setUsingMock] = useState(false);
 
-  const buses = tab === 'Regular' ? REG_BUSES : EXEC_BUSES;
+  useEffect(() => {
+    loadSchedules();
+  }, [from, to, date]);
+
+  const loadSchedules = async () => {
+    setLoading(true);
+    try {
+      const res = await schedules.search('', date || new Date().toISOString().slice(0, 10));
+      // Use origin/destination search
+      const res2 = await fetch(
+        `https://transithub-backend-production.up.railway.app/api/schedules/search?origin=${encodeURIComponent(from || '')}&destination=${encodeURIComponent(to || '')}&date=${date || new Date().toISOString().slice(0, 10)}`
+      );
+      const data = await res2.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setAllSchedules(data);
+        setUsingMock(false);
+      } else {
+        setUsingMock(true);
+      }
+    } catch {
+      setUsingMock(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toCard = (s: any, index: number) => ({
+    id: s.id,
+    op: s.route?.operator?.companyName || s.bus?.model || 'TransitHub',
+    dep: formatTime(s.departsAt),
+    arr: addHours(s.departsAt, 5),
+    dur: '5h 00m',
+    seats: s.bus?.capacity || 50,
+    price: parseFloat(s.route?.basePrice || '80'),
+    color: COLORS[index % COLORS.length],
+    abbr: getAbbr(s.route?.operator?.companyName || 'TH'),
+    type: s.bus?.model || 'Standard Coach',
+    scheduleId: s.id,
+  });
+
   const isExec = tab === 'Executive';
+  const buses = usingMock
+    ? (isExec ? MOCK_EXEC : MOCK_REG)
+    : allSchedules.map(toCard);
+
+  const displayBuses = isExec && !usingMock
+    ? buses.filter((_: any, i: number) => i % 3 === 0).map((b: any) => ({ ...b, price: b.price * 1.8, type: 'Executive Coach' }))
+    : buses;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -35,60 +98,84 @@ export default function Results() {
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{from} → {to}</Text>
-            <Text style={styles.subtitle}>{date}</Text>
+            <Text style={styles.subtitle}>{date}{usingMock ? ' · Demo mode' : ''}</Text>
           </View>
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.link}>Change</Text></TouchableOpacity>
         </View>
 
         <View style={styles.tabRow}>
-          <TouchableOpacity style={[styles.tabBtn, tab === 'Regular' && styles.tabActive]} onPress={() => setTab('Regular')}>
-            <Text style={[styles.tabText, tab === 'Regular' && styles.tabTextActive]}>Regular</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tabBtn, tab === 'Executive' && styles.tabActive]} onPress={() => setTab('Executive')}>
-            <Text style={[styles.tabText, tab === 'Executive' && styles.tabTextActive]}>Executive</Text>
-          </TouchableOpacity>
+          {(['Regular', 'Executive'] as const).map((t) => (
+            <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
+              <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {buses.map((bus, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[styles.busCard, isExec && styles.busCardExec]}
-            onPress={() => router.push({ pathname: '/screens/seats', params: { from, to, date, op: bus.op, dep: bus.dep, arr: bus.arr, price: String(bus.price), seats: String(bus.seats), busClass: tab } })}
-          >
-            <View style={styles.busHeader}>
-              <View style={[styles.abbr, { backgroundColor: bus.color }]}>
-                <Text style={styles.abbrText}>{bus.abbr}</Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.opName}>{bus.op}</Text>
-                <Text style={styles.opType}>{bus.type}</Text>
-              </View>
-              <View style={[styles.badge, isExec ? styles.badgeGold : styles.badgeNavy]}>
-                <Text style={[styles.badgeText, { color: isExec ? colors.gold : '#fff' }]}>{tab.toUpperCase()}</Text>
-              </View>
-            </View>
-            <View style={styles.timeRow}>
-              <View>
-                <Text style={styles.time}>{bus.dep}</Text>
-                <Text style={styles.city}>{from}</Text>
-              </View>
-              <Text style={styles.dur}>{bus.dur}</Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.time}>{bus.arr}</Text>
-                <Text style={styles.city}>{to}</Text>
-              </View>
-            </View>
-            <View style={styles.seatsRow}>
-              <Text style={styles.seatsText}>🪑 {bus.seats} seats left</Text>
-              <View style={styles.priceBlock}>
-                <Text style={styles.price}>GHS {bus.price}</Text>
-                <View style={styles.selectBtn}>
-                  <Text style={styles.selectBtnText}>Select</Text>
+        {loading ? (
+          <View style={{ paddingTop: 60, alignItems: 'center' }}>
+            <ActivityIndicator color={colors.gold} size="large" />
+            <Text style={{ color: colors.text2, fontFamily: 'DMSans_400Regular', fontSize: 13, marginTop: 12 }}>Finding buses...</Text>
+          </View>
+        ) : displayBuses.length === 0 ? (
+          <View style={{ paddingTop: 60, alignItems: 'center' }}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>🚌</Text>
+            <Text style={{ fontFamily: 'DMSans_500Medium', fontSize: 15, color: colors.text, marginBottom: 6 }}>No buses found</Text>
+            <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2 }}>Try a different date or route</Text>
+          </View>
+        ) : (
+          displayBuses.map((bus: any, i: number) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.busCard, isExec && styles.busCardExec]}
+              onPress={() => router.push({
+                pathname: '/screens/seats',
+                params: {
+                  from, to, date,
+                  op: bus.op,
+                  dep: bus.dep,
+                  arr: bus.arr,
+                  price: String(Math.round(bus.price)),
+                  seats: String(bus.seats),
+                  busClass: tab,
+                  scheduleId: bus.id || bus.scheduleId || '',
+                }
+              })}
+            >
+              <View style={styles.busHeader}>
+                <View style={[styles.abbr, { backgroundColor: bus.color }]}>
+                  <Text style={styles.abbrText}>{bus.abbr}</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.opName}>{bus.op}</Text>
+                  <Text style={styles.opType}>{bus.type}</Text>
+                </View>
+                <View style={[styles.badge, isExec ? styles.badgeGold : styles.badgeNavy]}>
+                  <Text style={[styles.badgeText, { color: isExec ? colors.gold : '#fff' }]}>{tab.toUpperCase()}</Text>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+              <View style={styles.timeRow}>
+                <View>
+                  <Text style={styles.time}>{bus.dep}</Text>
+                  <Text style={styles.city}>{from}</Text>
+                </View>
+                <Text style={styles.dur}>{bus.dur}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.time}>{bus.arr}</Text>
+                  <Text style={styles.city}>{to}</Text>
+                </View>
+              </View>
+              <View style={styles.seatsRow}>
+                <Text style={styles.seatsText}>🪑 {bus.seats} seats available</Text>
+                <View style={styles.priceBlock}>
+                  <Text style={styles.price}>GHS {Math.round(bus.price)}</Text>
+                  <View style={styles.selectBtn}>
+                    <Text style={styles.selectBtnText}>Select</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
