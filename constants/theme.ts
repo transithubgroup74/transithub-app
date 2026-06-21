@@ -1,4 +1,4 @@
-export const colors = {
+export const darkColors = {
   bg: '#020E1A',
   card: '#0D1F35',
   navy: '#1B3A6B',
@@ -14,6 +14,26 @@ export const colors = {
   text: '#FFFFFF',
   text2: '#6B85AA',
 };
+
+export const lightColors = {
+  bg: '#F0F4F8',
+  card: '#FFFFFF',
+  navy: '#1B3A6B',
+  gold: '#B8860B',
+  gold2: '#C9A84C',
+  white: '#FFFFFF',
+  gray: '#94A3B8',
+  green: '#00A88A',
+  red: '#E53E3E',
+  orange: '#DD6B20',
+  field: 'rgba(226,232,240,0.8)',
+  fborder: '#CBD5E0',
+  text: '#1A202C',
+  text2: '#4A5568',
+};
+
+// Default export — overridden at runtime by ThemeContext
+export const colors = darkColors;
 
 export const fonts = {
   heading: 'Syne_700Bold',

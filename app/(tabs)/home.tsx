@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const POPULAR = [
@@ -20,6 +20,7 @@ const RECENT = [
 
 export default function Home() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [from, setFrom] = useState('Kumasi');
   const [to, setTo] = useState('Accra');
   const [date, setDate] = useState('Sun, 25 May 2025');
@@ -72,99 +73,101 @@ export default function Home() {
     await AsyncStorage.setItem('toCity', t);
   };
 
+  const s = getStyles(colors);
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 90 }}>
-        <View style={styles.headerRow}>
+        <View style={s.headerRow}>
           <View>
-            <Text style={styles.greeting}>{userName ? userName.split(' ')[0] : 'Guest'} 👋</Text>
-            <Text style={styles.subGreeting}>{greeting}</Text>
+            <Text style={s.greeting}>{userName ? userName.split(' ')[0] : 'Guest'} 👋</Text>
+            <Text style={s.subGreeting}>{greeting}</Text>
           </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.clock}>{clock}</Text>
+          <View style={s.headerRight}>
+            <Text style={s.clock}>{clock}</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/notifications')}>
               <Text style={{ fontSize: 22 }}>🔔</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.pill}><Text style={styles.pillText}>🕐 24/7 Booking Available</Text></View>
+        <View style={s.pill}><Text style={s.pillText}>🕐 24/7 Booking Available</Text></View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>WHERE ARE YOU GOING?</Text>
+        <View style={s.card}>
+          <Text style={s.cardLabel}>WHERE ARE YOU GOING?</Text>
 
-          <TouchableOpacity style={styles.field} onPress={() => router.push({ pathname: '/screens/city-picker', params: { type: 'from' } })}>
+          <TouchableOpacity style={s.field} onPress={() => router.push({ pathname: '/screens/city-picker', params: { type: 'from' } })}>
             <Text style={{ fontSize: 18 }}>📍</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>FROM</Text>
-              <Text style={styles.fieldVal}>{from}</Text>
+              <Text style={s.fieldLabel}>FROM</Text>
+              <Text style={s.fieldVal}>{from}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={s.chevron}>›</Text>
           </TouchableOpacity>
 
           <View style={{ alignItems: 'flex-end', marginVertical: -4 }}>
-            <TouchableOpacity style={styles.swapBtn} onPress={swap}>
+            <TouchableOpacity style={s.swapBtn} onPress={swap}>
               <Text style={{ fontSize: 16, color: colors.bg }}>⇅</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={[styles.field, { marginTop: -4 }]} onPress={() => router.push({ pathname: '/screens/city-picker', params: { type: 'to' } })}>
+          <TouchableOpacity style={[s.field, { marginTop: -4 }]} onPress={() => router.push({ pathname: '/screens/city-picker', params: { type: 'to' } })}>
             <Text style={{ fontSize: 18 }}>📍</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>TO</Text>
-              <Text style={styles.fieldVal}>{to}</Text>
+              <Text style={s.fieldLabel}>TO</Text>
+              <Text style={s.fieldVal}>{to}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={s.chevron}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.field} onPress={() => router.push('/screens/calendar')}>
+          <TouchableOpacity style={s.field} onPress={() => router.push('/screens/calendar')}>
             <Text style={{ fontSize: 18 }}>📅</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>DATE</Text>
-              <Text style={styles.fieldVal}>{date}</Text>
+              <Text style={s.fieldLabel}>DATE</Text>
+              <Text style={s.fieldVal}>{date}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={s.chevron}>›</Text>
           </TouchableOpacity>
 
-          <View style={styles.classRow}>
-            <TouchableOpacity style={[styles.classBtn, busClass === 'Regular' ? styles.classBtnActive : styles.classBtnOutline]} onPress={() => setBusClass('Regular')}>
-              <Text style={[styles.classBtnText, { color: busClass === 'Regular' ? colors.bg : colors.gold }]}>Regular</Text>
-              <Text style={[styles.classBtnSub, { color: busClass === 'Regular' ? colors.bg : colors.gray }]}>from GHS 80</Text>
+          <View style={s.classRow}>
+            <TouchableOpacity style={[s.classBtn, busClass === 'Regular' ? s.classBtnActive : s.classBtnOutline]} onPress={() => setBusClass('Regular')}>
+              <Text style={[s.classBtnText, { color: busClass === 'Regular' ? colors.bg : colors.gold }]}>Regular</Text>
+              <Text style={[s.classBtnSub, { color: busClass === 'Regular' ? colors.bg : colors.gray }]}>from GHS 80</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.classBtn, busClass === 'Executive' ? styles.classBtnActive : styles.classBtnOutline]} onPress={() => setBusClass('Executive')}>
-              <Text style={[styles.classBtnText, { color: busClass === 'Executive' ? colors.bg : colors.gold }]}>Executive</Text>
-              <Text style={[styles.classBtnSub, { color: busClass === 'Executive' ? colors.bg : colors.gray }]}>from GHS 150</Text>
+            <TouchableOpacity style={[s.classBtn, busClass === 'Executive' ? s.classBtnActive : s.classBtnOutline]} onPress={() => setBusClass('Executive')}>
+              <Text style={[s.classBtnText, { color: busClass === 'Executive' ? colors.bg : colors.gold }]}>Executive</Text>
+              <Text style={[s.classBtnSub, { color: busClass === 'Executive' ? colors.bg : colors.gray }]}>from GHS 150</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.btnGold} onPress={() => search()}>
-            <Text style={styles.btnGoldText}>🔍 Search Buses</Text>
+          <TouchableOpacity style={s.btnGold} onPress={() => search()}>
+            <Text style={s.btnGoldText}>🔍 Search Buses</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Routes</Text>
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionTitle}>Popular Routes</Text>
           <TouchableOpacity onPress={() => router.push('/screens/all-routes')}>
-            <Text style={styles.link}>View All</Text>
+            <Text style={s.link}>View All</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
           {POPULAR.map((r, i) => (
-            <TouchableOpacity key={i} style={styles.chip} onPress={() => { setRoute(r.from, r.to).then(() => search(r.from, r.to)); }}>
-              <Text style={styles.chipRoute}>{r.from}→{r.to}</Text>
-              <Text style={styles.chipPrice}>GHS {r.price}</Text>
+            <TouchableOpacity key={i} style={s.chip} onPress={() => { setRoute(r.from, r.to).then(() => search(r.from, r.to)); }}>
+              <Text style={s.chipRoute}>{r.from}→{r.to}</Text>
+              <Text style={s.chipPrice}>GHS {r.price}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Searches</Text>
-          <Text style={styles.link}>Clear</Text>
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionTitle}>Recent Searches</Text>
+          <Text style={s.link}>Clear</Text>
         </View>
         {RECENT.map((r, i) => (
-          <TouchableOpacity key={i} style={styles.card} onPress={() => { setRoute(r.from, r.to).then(() => router.push({ pathname: '/screens/results', params: { from: r.from, to: r.to, date: r.date, busClass } })); }}>
-            <Text style={styles.recentRoute}>{r.from} → {r.to}</Text>
-            <Text style={styles.recentMeta}>📅 {r.date} &nbsp; 🕐 {r.time}</Text>
+          <TouchableOpacity key={i} style={s.card} onPress={() => { setRoute(r.from, r.to).then(() => router.push({ pathname: '/screens/results', params: { from: r.from, to: r.to, date: r.date, busClass } })); }}>
+            <Text style={s.recentRoute}>{r.from} → {r.to}</Text>
+            <Text style={s.recentMeta}>📅 {r.date}   🕐 {r.time}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -172,14 +175,14 @@ export default function Home() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   greeting: { fontFamily: 'DMSans_500Medium', fontSize: 20, color: colors.text },
   subGreeting: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   clock: { fontFamily: 'DMSans_500Medium', fontSize: 13, color: colors.text2 },
-  pill: { backgroundColor: 'rgba(13,31,53,.9)', borderWidth: 1, borderColor: colors.gold, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 12 },
+  pill: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.gold, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 12 },
   pillText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
   cardLabel: { fontFamily: 'DMSans_500Medium', fontSize: 10, color: colors.gold, letterSpacing: 1, marginBottom: 10 },
@@ -199,7 +202,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sectionTitle: { fontFamily: 'DMSans_500Medium', fontSize: 13, color: colors.text },
   link: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold },
-  chip: { backgroundColor: colors.card, borderRadius: 12, padding: 10, marginRight: 8, borderWidth: 1, borderColor: 'rgba(27,58,107,.4)' },
+  chip: { backgroundColor: colors.card, borderRadius: 12, padding: 10, marginRight: 8, borderWidth: 1, borderColor: colors.fborder },
   chipRoute: { fontFamily: 'DMSans_500Medium', fontSize: 12, color: colors.text },
   chipPrice: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.gold },
   recentRoute: { fontFamily: 'DMSans_500Medium', fontSize: 13, color: colors.text, marginBottom: 4 },

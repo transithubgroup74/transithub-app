@@ -4,9 +4,23 @@ import { useFonts, Syne_700Bold, Syne_800ExtraBold } from '@expo-google-fonts/sy
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { colors } from '../constants/theme';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
 SplashScreen.preventAutoHideAsync();
+
+function AppStack() {
+  const { colors, isDark } = useTheme();
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="screens" />
+      </Stack>
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -23,13 +37,8 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="screens" />
-      </Stack>
-    </>
+    <ThemeProvider>
+      <AppStack />
+    </ThemeProvider>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const MENU = [
@@ -15,6 +15,7 @@ const MENU = [
 
 export default function Profile() {
   const router = useRouter();
+  const { colors, isDark, toggleTheme } = useTheme();
   const [name, setName] = useState('Traveller');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -114,8 +115,25 @@ export default function Profile() {
           ))}
         </View>
 
+        {/* Theme toggle */}
+        <View style={[styles.card, { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 }]}>
+          <Text style={{ fontSize: 18, width: 28 }}>{isDark ? '🌙' : '☀️'}</Text>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.menuLabel, { color: colors.text }]}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
+            <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2 }}>
+              {isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+            </Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: colors.fborder, true: colors.navy }}
+            thumbColor={colors.gold}
+          />
+        </View>
+
         {/* App version */}
-        <Text style={styles.version}>TransitHub v1.0.0 · Ghana's Intercity Travel App</Text>
+        <Text style={[styles.version, { color: colors.text2 }]}>TransitHub v1.0.0 · Ghana's Intercity Travel App</Text>
 
         <TouchableOpacity style={styles.signOut} onPress={signOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
