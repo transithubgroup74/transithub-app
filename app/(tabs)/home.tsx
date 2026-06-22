@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getUnreadCount } from '../../utils/notifications';
 
 const POPULAR = [
   { from: 'Kumasi', to: 'Accra', price: 80 },
@@ -28,6 +29,7 @@ export default function Home() {
   const [userName, setUserName] = useState('');
   const [clock, setClock] = useState('');
   const [greeting, setGreeting] = useState('Good morning');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useFocusEffect(useCallback(() => {
     const load = async () => {
@@ -41,6 +43,7 @@ export default function Home() {
       if (sd) setDate(sd);
       if (un) setUserName(un);
       else if (ue) setUserName(ue.split('@')[0]);
+      getUnreadCount().then(setUnreadCount);
     };
     load();
   }, []));
@@ -87,8 +90,13 @@ export default function Home() {
           </View>
           <View style={s.headerRight}>
             <Text style={s.clock}>{clock}</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/notifications')}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/notifications')} style={{ position: 'relative' }}>
               <Text style={{ fontSize: 22 }}>🔔</Text>
+              {unreadCount > 0 && (
+                <View style={{ position: 'absolute', top: -4, right: -4, backgroundColor: colors.gold, borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 }}>
+                  <Text style={{ fontSize: 9, color: colors.bg, fontFamily: 'DMSans_500Medium' }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>

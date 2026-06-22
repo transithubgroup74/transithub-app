@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { addNotification } from '../../utils/notifications';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,6 +50,7 @@ export default function Awaiting() {
     const confirm = setTimeout(async () => {
       clearInterval(timerRef.current);
       await saveBookingLocally();
+      await addNotification({ icon: '✅', bg: 'rgba(0,201,167,0.15)', title: 'Booking Confirmed!', msg: `Seat ${p.seat} on ${p.from}→${p.to} confirmed. Departs ${p.dep} on ${p.date}.`, time: 'Just now' });
       router.replace({ pathname: '/screens/confirmed', params: p });
     }, 3000);
 

@@ -1,53 +1,84 @@
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const NOTIFS = [
-  { icon: '✅', bg: 'rgba(0,201,167,0.15)', title: 'Booking Confirmed', msg: 'Seat 12 on Kumasi→Accra confirmed. Departs 06:00 AM on 25 May.', time: '2 min ago', read: false },
-  { icon: '⏰', bg: 'rgba(201,168,76,0.15)', title: 'Departure Reminder', msg: 'Your bus to Accra departs in 1 hour. Head to the station now.', time: '1 hour ago', read: false },
-  { icon: '❌', bg: 'rgba(255,71,87,0.15)', title: 'Payment Failed', msg: 'Your GHS 83.00 MoMo payment was not completed. Try again.', time: 'Yesterday', read: true },
-  { icon: '⭐', bg: 'rgba(201,168,76,0.15)', title: 'Welcome to TransitHub!', msg: 'Book your first intercity ticket and travel in comfort across Ghana.', time: '3 days ago', read: true },
-];
+import { useFocusEffect } from '@react-navigation/native';
+import { getNotifications, markAllRead, formatTime, AppNotification } from '../../utils/notifications';
 
 export default function Notifications() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  const [notifs, setNotifs] = useState<AppNotification[]>([]);
+
+  useFocusEffect(useCallback(() => {
+    getNotifications().then(setNotifs);
+  }, []));
+
+  const handleMarkAllRead = async () => {
+    await markAllRead();
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const today = notifs.filter((n) => {
+    const diff = Date.now() - new Date(n.createdAt).getTime();
+    return diff < 24 * 60 * 60 * 1000;
+  });
+  const earlier = notifs.filter((n) => {
+    const diff = Date.now() - new Date(n.createdAt).getTime();
+    return diff >= 24 * 60 * 60 * 1000;
+  });
+
+  const renderItem = (n: AppNotification, i: number) => (
+    <View key={n.id || i} style={[styles.row, n.read && { opacity: 0.6 }]}>
+      <View style={[styles.icon, { backgroundColor: n.bg }]}><Text>{n.icon}</Text></View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.nTitle}>{n.title}</Text>
+        <Text style={styles.nMsg}>{n.msg}</Text>
+        <Text style={styles.nTime}>{formatTime(n.createdAt)}</Text>
+      </View>
+      {!n.read && <View style={styles.dot} />}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Notifications</Text>
-          <TouchableOpacity><Text style={styles.link}>Mark all read</Text></TouchableOpacity>
+          {notifs.some((n) => !n.read) && (
+            <TouchableOpacity onPress={handleMarkAllRead}>
+              <Text style={styles.link}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        <Text style={styles.section}>TODAY</Text>
-        {NOTIFS.filter((_, i) => i < 2).map((n, i) => (
-          <View key={i} style={styles.row}>
-            <View style={[styles.icon, { backgroundColor: n.bg }]}><Text>{n.icon}</Text></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nTitle}>{n.title}</Text>
-              <Text style={styles.nMsg}>{n.msg}</Text>
-              <Text style={styles.nTime}>{n.time}</Text>
-            </View>
-            {!n.read && <View style={styles.dot} />}
+        {notifs.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>🔔</Text>
+            <Text style={styles.emptyText}>No notifications yet</Text>
           </View>
-        ))}
-
-        <Text style={[styles.section, { marginTop: 12 }]}>EARLIER</Text>
-        {NOTIFS.filter((_, i) => i >= 2).map((n, i) => (
-          <View key={i} style={[styles.row, { opacity: 0.6 }]}>
-            <View style={[styles.icon, { backgroundColor: n.bg }]}><Text>{n.icon}</Text></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nTitle}>{n.title}</Text>
-              <Text style={styles.nMsg}>{n.msg}</Text>
-              <Text style={styles.nTime}>{n.time}</Text>
-            </View>
-          </View>
-        ))}
+        ) : (
+          <>
+            {today.length > 0 && (
+              <>
+                <Text style={styles.section}>TODAY</Text>
+                {today.map(renderItem)}
+              </>
+            )}
+            {earlier.length > 0 && (
+              <>
+                <Text style={[styles.section, { marginTop: 12 }]}>EARLIER</Text>
+                {earlier.map(renderItem)}
+              </>
+            )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   title: { fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text },
@@ -59,4 +90,6 @@ const styles = StyleSheet.create({
   nMsg: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, lineHeight: 18 },
   nTime: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2, marginTop: 3 },
   dot: { width: 8, height: 8, backgroundColor: colors.gold, borderRadius: 4, marginTop: 4 },
+  empty: { alignItems: 'center', paddingTop: 80 },
+  emptyText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: colors.text2 },
 });

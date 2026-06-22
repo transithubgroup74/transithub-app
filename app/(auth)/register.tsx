@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../services/api';
+import { addNotification } from '../../utils/notifications';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 
@@ -40,6 +41,7 @@ export default function Register() {
     } finally {
       setLoading(false);
     }
+    await addNotification({ icon: '⭐', bg: 'rgba(201,168,76,0.15)', title: 'Welcome to TransitHub!', msg: `Hi ${capitalize(firstName)}, book your first intercity ticket and travel in comfort across Ghana.`, time: 'Just now' });
     router.replace('/(tabs)/home');
   };
 
