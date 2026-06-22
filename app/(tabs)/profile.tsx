@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { darkColors } from '../../constants/theme';
 
 const MENU = [
   { icon: '👤', label: 'Personal Information', route: '/screens/edit-profile' },
@@ -16,19 +18,19 @@ const MENU = [
 export default function Profile() {
   const router = useRouter();
   const { colors, isDark, toggleTheme } = useTheme();
+  const styles = getStyles(colors);
   const [name, setName] = useState('Traveller');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [tripCount, setTripCount] = useState(0);
   const [monthCount, setMonthCount] = useState(0);
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  useFocusEffect(useCallback(() => { loadProfile(); }, []));
 
   const loadProfile = async () => {
     const res = await AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone', 'localBookings']);
     if (res[0][1]) setName(res[0][1]);
+    else if (res[1][1]) setName(res[1][1].split('@')[0]);
     if (res[1][1]) setEmail(res[1][1]);
     if (res[2][1]) setPhone(res[2][1]);
     if (res[3][1]) {
@@ -48,7 +50,7 @@ export default function Profile() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out', style: 'destructive', onPress: async () => {
-          await AsyncStorage.multiRemove(['token', 'userName', 'userEmail', 'userPhone']);
+          await AsyncStorage.removeItem('token');
           router.replace('/(auth)/welcome');
         },
       },
@@ -143,7 +145,7 @@ export default function Profile() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   back: { fontSize: 22, color: colors.gold, padding: 4 },

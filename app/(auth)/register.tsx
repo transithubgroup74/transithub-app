@@ -3,36 +3,47 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../services/api';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { darkColors } from '../../constants/theme';
 
 export default function Register() {
   const router = useRouter();
-  const [name, setName] = useState('');
+  const { colors } = useTheme();
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [surname, setSurname] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const capitalize = (s: string) => s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : '';
+
   const doRegister = async () => {
-    if (!name || !email || !password || !phone) return Alert.alert('Error', 'Please fill in all fields');
+    if (!firstName.trim() || !surname.trim()) return Alert.alert('Error', 'First name and surname are required');
+    if (!email || !password || !phone) return Alert.alert('Error', 'Please fill in all fields');
     if (password !== confirm) return Alert.alert('Error', 'Passwords do not match');
+
+    const fullName = [capitalize(firstName), capitalize(middleName), capitalize(surname)].filter(Boolean).join(' ');
+
     setLoading(true);
     try {
-      const res = await auth.register({ name, email, password, phone });
+      const res = await auth.register({ name: fullName, email, password, phone });
       await AsyncStorage.setItem('token', res.data.token);
       await AsyncStorage.setItem('userEmail', email);
-      await AsyncStorage.setItem('userName', name);
+      await AsyncStorage.setItem('userName', fullName);
     } catch {
-      // Backend not reachable from phone — use demo session for UI testing
       await AsyncStorage.setItem('token', 'demo-token');
       await AsyncStorage.setItem('userEmail', email);
-      await AsyncStorage.setItem('userName', name);
+      await AsyncStorage.setItem('userName', fullName);
     } finally {
       setLoading(false);
     }
     router.replace('/(tabs)/home');
   };
+
+  const styles = getStyles(colors);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -44,7 +55,9 @@ export default function Register() {
         <View style={{ width: 28 }} />
       </View>
 
-      <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor={colors.gray} value={name} onChangeText={setName} />
+      <TextInput style={styles.input} placeholder="First Name *" placeholderTextColor={colors.gray} value={firstName} onChangeText={setFirstName} />
+      <TextInput style={styles.input} placeholder="Middle Name (optional)" placeholderTextColor={colors.gray} value={middleName} onChangeText={setMiddleName} />
+      <TextInput style={styles.input} placeholder="Surname *" placeholderTextColor={colors.gray} value={surname} onChangeText={setSurname} />
       <TextInput style={styles.input} placeholder="Email address" placeholderTextColor={colors.gray} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="🇬🇭 +233 Phone Number" placeholderTextColor={colors.gray} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
       <TextInput style={styles.input} placeholder="Password" placeholderTextColor={colors.gray} secureTextEntry value={password} onChangeText={setPassword} />
@@ -64,7 +77,7 @@ export default function Register() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: 16, paddingTop: 56 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   back: { fontSize: 22, color: colors.gold, padding: 4 },

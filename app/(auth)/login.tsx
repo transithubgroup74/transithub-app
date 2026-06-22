@@ -18,11 +18,19 @@ export default function Login() {
     try {
       const res = await auth.login(email, password);
       await AsyncStorage.setItem('token', res.data.token);
+      const prevEmail = await AsyncStorage.getItem('userEmail');
       await AsyncStorage.setItem('userEmail', email);
+      if (prevEmail !== email) {
+        const name = res.data.user?.name || res.data.name || email.split('@')[0];
+        await AsyncStorage.multiSet([['userName', name], ['userPhone', ''], ['userDob', '']]);
+      }
     } catch {
       await AsyncStorage.setItem('token', 'demo-token');
+      const prevEmail = await AsyncStorage.getItem('userEmail');
       await AsyncStorage.setItem('userEmail', email);
-      await AsyncStorage.setItem('userName', email.split('@')[0]);
+      if (prevEmail !== email) {
+        await AsyncStorage.multiSet([['userName', email.split('@')[0]], ['userPhone', ''], ['userDob', '']]);
+      }
     } finally {
       setLoading(false);
     }

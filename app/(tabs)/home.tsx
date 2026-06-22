@@ -23,7 +23,7 @@ export default function Home() {
   const { colors } = useTheme();
   const [from, setFrom] = useState('Kumasi');
   const [to, setTo] = useState('Accra');
-  const [date, setDate] = useState('Sun, 25 May 2025');
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-GH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }));
   const [busClass, setBusClass] = useState<'Regular' | 'Executive'>('Regular');
   const [userName, setUserName] = useState('');
   const [clock, setClock] = useState('');
@@ -35,10 +35,12 @@ export default function Home() {
       const tc = await AsyncStorage.getItem('toCity');
       const sd = await AsyncStorage.getItem('selectedDate');
       const un = await AsyncStorage.getItem('userName');
+      const ue = await AsyncStorage.getItem('userEmail');
       if (fc) setFrom(fc);
       if (tc) setTo(tc);
       if (sd) setDate(sd);
       if (un) setUserName(un);
+      else if (ue) setUserName(ue.split('@')[0]);
     };
     load();
   }, []));
@@ -80,7 +82,7 @@ export default function Home() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 90 }}>
         <View style={s.headerRow}>
           <View>
-            <Text style={s.greeting}>{userName ? userName.split(' ')[0] : 'Guest'} 👋</Text>
+            <Text style={s.greeting}>{userName ? userName.split(' ')[0].charAt(0).toUpperCase() + userName.split(' ')[0].slice(1).toLowerCase() : 'Guest'} 👋</Text>
             <Text style={s.subGreeting}>{greeting}</Text>
           </View>
           <View style={s.headerRight}>
