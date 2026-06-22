@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { darkColors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const MOMO = [
@@ -17,10 +18,14 @@ const BANKS = [
   { id: 'gcb', label: 'GCB Bank' }, { id: 'ecobank', label: 'Ecobank' },
   { id: 'fidelity', label: 'Fidelity' }, { id: 'absa', label: 'Absa' },
   { id: 'stanbic', label: 'Stanbic' }, { id: 'zenith', label: 'Zenith' },
+  { id: 'access', label: 'Access Bank' }, { id: 'calbank', label: 'Cal Bank' },
+  { id: 'nib', label: 'NIB' }, { id: 'prudential', label: 'Prudential Bank' },
 ];
 
 export default function Payment() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string }>();
   const [selected, setSelected] = useState('');
   const [momoNum, setMomoNum] = useState('');
@@ -115,7 +120,7 @@ export default function Payment() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   back: { fontSize: 22, color: colors.gold, padding: 4 },
