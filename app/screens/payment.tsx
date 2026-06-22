@@ -4,6 +4,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import PaystackWebView from 'react-native-paystack-webview';
+
+const PAYSTACK_PUBLIC_KEY = 'pk_test_ce7e4e8adb4bef6510fbe1fb7bf04d52b2f7c001';
 
 const MOMO = [
   { id: 'mtn', label: 'MTN', sub: 'MoMo', color: '#FFCC00' },
@@ -26,29 +30,56 @@ export default function Payment() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string }>();
+  const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string; op: string; dep: string; arr: string; date: string; busClass: string }>();
   const [selected, setSelected] = useState('');
   const [momoNum, setMomoNum] = useState('');
   const [cardNum, setCardNum] = useState('');
   const [cardExp, setCardExp] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPaystack, setShowPaystack] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const isMomo = ['mtn', 'telecel', 'airteltigo'].includes(selected);
   const isCard = ['visa', 'mastercard'].includes(selected);
 
-  const processPayment = () => {
+  const amountInPesewas = Math.round(parseFloat(p.total || '0') * 100);
+
+  const processPayment = async () => {
     if (!selected) return Alert.alert('Select a payment method');
     if (isMomo && !momoNum) return Alert.alert('Enter your MoMo number');
     if (isCard && !cardNum) return Alert.alert('Enter card number');
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push({ pathname: '/screens/awaiting', params: p });
-    }, 1000);
+    const email = await AsyncStorage.getItem('userEmail') || 'passenger@transithub.com';
+    setUserEmail(email);
+    setLoading(false);
+    setShowPaystack(true);
   };
 
-  const selOpt = (id: string) => setSelected(id);
+  const onPaymentSuccess = async () => {
+    setShowPaystack(false);
+    router.replace({ pathname: '/screens/awaiting', params: p });
+  };
+
+  const onPaymentCancel = () => {
+    setShowPaystack(false);
+    Alert.alert('Payment Cancelled', 'Your payment was cancelled. Please try again.');
+  };
+
+  if (showPaystack) {
+    return (
+      <PaystackWebView
+        paystackKey={PAYSTACK_PUBLIC_KEY}
+        amount={amountInPesewas}
+        billingEmail={userEmail}
+        currency="GHS"
+        channels={isMomo ? ['mobile_money'] : isCard ? ['card'] : ['bank']}
+        onCancel={onPaymentCancel}
+        onSuccess={onPaymentSuccess}
+        autoStart
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -71,7 +102,7 @@ export default function Payment() {
         <Text style={styles.subLabel}>📱 Mobile Money</Text>
         <View style={styles.grid3}>
           {MOMO.map((m) => (
-            <TouchableOpacity key={m.id} style={[styles.payOpt, selected === m.id && styles.payOptSel]} onPress={() => selOpt(m.id)}>
+            <TouchableOpacity key={m.id} style={[styles.payOpt, selected === m.id && styles.payOptSel]} onPress={() => setSelected(m.id)}>
               <Text style={[styles.payLabel, { color: m.color }]}>{m.label}</Text>
               <Text style={styles.paySub}>{m.sub}</Text>
             </TouchableOpacity>
@@ -81,7 +112,7 @@ export default function Payment() {
         <Text style={[styles.subLabel, { marginTop: 10 }]}>💳 Bank Cards</Text>
         <View style={styles.grid2}>
           {CARDS.map((c) => (
-            <TouchableOpacity key={c.id} style={[styles.payOpt, selected === c.id && styles.payOptSel]} onPress={() => selOpt(c.id)}>
+            <TouchableOpacity key={c.id} style={[styles.payOpt, selected === c.id && styles.payOptSel]} onPress={() => setSelected(c.id)}>
               <Text style={[styles.payLabel, { color: c.color }]}>{c.label}</Text>
             </TouchableOpacity>
           ))}
@@ -90,7 +121,7 @@ export default function Payment() {
         <Text style={[styles.subLabel, { marginTop: 10 }]}>🏦 Ghanaian Banks</Text>
         <View style={styles.grid2}>
           {BANKS.map((b) => (
-            <TouchableOpacity key={b.id} style={[styles.payOpt, selected === b.id && styles.payOptSel]} onPress={() => selOpt(b.id)}>
+            <TouchableOpacity key={b.id} style={[styles.payOpt, selected === b.id && styles.payOptSel]} onPress={() => setSelected(b.id)}>
               <Text style={styles.payLabel}>{b.label}</Text>
             </TouchableOpacity>
           ))}
