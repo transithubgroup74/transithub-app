@@ -14,8 +14,28 @@ export default function Confirmed() {
   const bookingId = 'THB' + Date.now().toString().slice(-8);
   const code = `THB-2025-${(p.from || '').substring(0, 3).toUpperCase()}-${(p.to || '').substring(0, 3).toUpperCase()}-${String(p.seat).padStart(4, '0')}`;
 
+  const ticketText = `━━━━━━━━━━━━━━━━━━━━━━
+🚌 TRANSITHUB TICKET
+━━━━━━━━━━━━━━━━━━━━━━
+Ref: ${bookingId}
+Route: ${p.from} → ${p.to}
+Date: ${p.date}
+Departure: ${p.dep}
+Seat: ${p.seat}
+Class: ${p.busClass || 'Regular'}
+Operator: ${p.op}
+Amount: GHS ${p.total}
+━━━━━━━━━━━━━━━━━━━━━━
+QR Code: ${code}
+Show this at the station gate.
+━━━━━━━━━━━━━━━━━━━━━━`;
+
   const shareTicket = () => {
-    Share.share({ message: `TransitHub Ticket\n${p.from} → ${p.to}\nDate: ${p.date}\nDep: ${p.dep}\nSeat: ${p.seat}\nRef: ${bookingId}` });
+    Share.share({ message: ticketText });
+  };
+
+  const downloadTicket = () => {
+    Share.share({ message: ticketText, title: `TransitHub Ticket - ${bookingId}` });
   };
 
   return (
@@ -71,7 +91,7 @@ export default function Confirmed() {
           <TouchableOpacity style={styles.btnOutline} onPress={shareTicket}>
             <Text style={styles.btnOutlineText}>Share Ticket</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnOutline} onPress={() => {}}>
+          <TouchableOpacity style={styles.btnOutline} onPress={downloadTicket}>
             <Text style={styles.btnOutlineText}>Download</Text>
           </TouchableOpacity>
         </View>

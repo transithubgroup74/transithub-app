@@ -6,17 +6,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUnreadCount } from '../../utils/notifications';
+import { getRecentSearches, clearRecentSearches, RecentSearch } from '../../utils/recentSearches';
 
 const POPULAR = [
   { from: 'Kumasi', to: 'Accra', price: 80 },
   { from: 'Accra', to: 'Tamale', price: 120 },
-  { from: 'Accra', to: 'Bolga', price: 140 },
+  { from: 'Accra', to: 'Bolgatanga', price: 140 },
   { from: 'Accra', to: 'Cape Coast', price: 50 },
-];
-
-const RECENT = [
-  { from: 'Accra', to: 'Tamale', date: '18 May 2025', time: '08:00 AM' },
-  { from: 'Kumasi', to: 'Sunyani', date: '12 May 2025', time: '10:30 AM' },
 ];
 
 export default function Home() {
@@ -30,6 +26,7 @@ export default function Home() {
   const [clock, setClock] = useState('');
   const [greeting, setGreeting] = useState('Good morning');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
 
   useFocusEffect(useCallback(() => {
     const load = async () => {
@@ -44,6 +41,7 @@ export default function Home() {
       if (un) setUserName(un);
       else if (ue) setUserName(ue.split('@')[0]);
       getUnreadCount().then(setUnreadCount);
+      getRecentSearches().then(setRecentSearches);
     };
     load();
   }, []));
@@ -67,9 +65,11 @@ export default function Home() {
     await AsyncStorage.setItem('toCity', tmp);
   };
 
-  const search = (f = from, t = to) => {
+  const search = async (f = from, t = to, d = date) => {
     if (f === t) { Alert.alert('Error', 'Origin and destination cannot be the same'); return; }
-    router.push({ pathname: '/screens/results', params: { from: f, to: t, date, busClass } });
+    const { saveSearch } = await import('../../utils/recentSearches');
+    await saveSearch(f, t, d);
+    router.push({ pathname: '/screens/results', params: { from: f, to: t, date: d, busClass } });
   };
 
   const setRoute = async (f: string, t: string) => {
@@ -170,16 +170,22 @@ export default function Home() {
           ))}
         </ScrollView>
 
-        <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Recent Searches</Text>
-          <Text style={s.link}>Clear</Text>
-        </View>
-        {RECENT.map((r, i) => (
-          <TouchableOpacity key={i} style={s.card} onPress={() => { setRoute(r.from, r.to).then(() => router.push({ pathname: '/screens/results', params: { from: r.from, to: r.to, date: r.date, busClass } })); }}>
-            <Text style={s.recentRoute}>{r.from} → {r.to}</Text>
-            <Text style={s.recentMeta}>📅 {r.date}   🕐 {r.time}</Text>
-          </TouchableOpacity>
-        ))}
+        {recentSearches.length > 0 && (
+          <>
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>Recent Searches</Text>
+              <TouchableOpacity onPress={async () => { await clearRecentSearches(); setRecentSearches([]); }}>
+                <Text style={s.link}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+            {recentSearches.map((r, i) => (
+              <TouchableOpacity key={i} style={s.card} onPress={() => { setRoute(r.from, r.to).then(() => search(r.from, r.to, r.date)); }}>
+                <Text style={s.recentRoute}>{r.from} → {r.to}</Text>
+                <Text style={s.recentMeta}>📅 {r.date}   🕐 {r.time}</Text>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
