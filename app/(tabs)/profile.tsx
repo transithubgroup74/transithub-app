@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { darkColors } from '../../constants/theme';
+import { bookings as bookingsApi } from '../../services/api';
 
 const MENU = [
   { icon: '👤', label: 'Personal Information', route: '/screens/edit-profile' },
@@ -24,25 +25,33 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [tripCount, setTripCount] = useState(0);
   const [monthCount, setMonthCount] = useState(0);
+  const [photo, setPhoto] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => { loadProfile(); }, []));
 
   const loadProfile = async () => {
-    const res = await AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone', 'localBookings']);
+    const res = await AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone', 'localBookings', 'userPhoto']);
     if (res[0][1]) setName(res[0][1]);
     else if (res[1][1]) setName(res[1][1].split('@')[0]);
     if (res[1][1]) setEmail(res[1][1]);
     if (res[2][1]) setPhone(res[2][1]);
-    if (res[3][1]) {
-      const bookings = JSON.parse(res[3][1]);
-      setTripCount(bookings.length);
-      const now = new Date();
-      const thisMonth = bookings.filter((b: any) => {
-        const d = new Date(b.createdAt);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-      setMonthCount(thisMonth.length);
-    }
+    if (res[4][1]) setPhoto(res[4][1]);
+
+    const localBookings = res[3][1] ? JSON.parse(res[3][1]) : [];
+    let apiBookings: any[] = [];
+    try {
+      const apiRes = await bookingsApi.getMine();
+      apiBookings = apiRes.data || [];
+    } catch (_) {}
+
+    const all = [...localBookings, ...apiBookings];
+    setTripCount(all.length);
+    const now = new Date();
+    const thisMonth = all.filter((b: any) => {
+      const d = new Date(b.createdAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    setMonthCount(thisMonth.length);
   };
 
   const signOut = () => {
@@ -78,7 +87,11 @@ export default function Profile() {
         {/* Avatar card */}
         <View style={[styles.card, { alignItems: 'center' }]}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            {photo ? (
+              <Image source={{ uri: photo }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
           </View>
           <Text style={styles.name}>{name}</Text>
           {email ? <Text style={styles.email}>{email}</Text> : null}
@@ -151,7 +164,8 @@ const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   back: { fontSize: 22, color: colors.gold, padding: 4 },
   title: { flex: 1, textAlign: 'center', fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
-  avatar: { width: 72, height: 72, backgroundColor: colors.navy, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 10, borderWidth: 2, borderColor: colors.gold },
+  avatar: { width: 72, height: 72, backgroundColor: colors.navy, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 10, borderWidth: 2, borderColor: colors.gold, overflow: 'hidden' },
+  avatarImg: { width: 72, height: 72, borderRadius: 36 },
   avatarText: { fontFamily: 'DMSans_500Medium', fontSize: 24, color: colors.gold },
   name: { fontFamily: 'DMSans_500Medium', fontSize: 18, color: colors.text, marginBottom: 4 },
   email: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.gold, marginBottom: 2 },

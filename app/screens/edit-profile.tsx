@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,18 +12,44 @@ export default function EditProfile() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone', 'userDob']).then((res) => {
+    AsyncStorage.multiGet(['userName', 'userEmail', 'userPhone', 'userDob', 'userPhoto']).then((res) => {
       if (res[0][1]) setName(res[0][1]);
       if (res[1][1]) setEmail(res[1][1]);
       if (res[2][1]) setPhone(res[2][1]);
       if (res[3][1]) setDob(res[3][1]);
+      if (res[4][1]) setPhoto(res[4][1]);
     });
   }, []);
 
+  const pickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPhoto(result.assets[0].uri);
+    }
+  };
+
   const save = async () => {
-    await AsyncStorage.multiSet([['userName', name], ['userEmail', email], ['userPhone', phone], ['userDob', dob]]);
+    const entries: [string, string][] = [
+      ['userName', name],
+      ['userEmail', email],
+      ['userPhone', phone],
+      ['userDob', dob],
+    ];
+    if (photo) entries.push(['userPhoto', photo]);
+    await AsyncStorage.multiSet(entries);
     router.back();
   };
 
@@ -37,12 +64,17 @@ export default function EditProfile() {
           <TouchableOpacity onPress={save}><Text style={styles.saveLink}>Save</Text></TouchableOpacity>
         </View>
 
-        <View style={styles.avatarBox}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text>
+        <TouchableOpacity style={styles.avatarBox} onPress={pickPhoto}>
+          <View style={styles.avatar}>
+            {photo ? (
+              <Image source={{ uri: photo }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
             <View style={styles.cameraBtn}><Text>📷</Text></View>
           </View>
           <Text style={styles.changePhoto}>Change Photo</Text>
-        </View>
+        </TouchableOpacity>
 
         <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor={colors.gray} value={name} onChangeText={setName} />
         <View style={{ position: 'relative' }}>
@@ -68,7 +100,8 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center', fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text },
   saveLink: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.gold },
   avatarBox: { alignItems: 'center', marginBottom: 20 },
-  avatar: { width: 72, height: 72, backgroundColor: colors.navy, borderRadius: 36, justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: 8 },
+  avatar: { width: 72, height: 72, backgroundColor: colors.navy, borderRadius: 36, justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: 8, overflow: 'hidden' },
+  avatarImg: { width: 72, height: 72, borderRadius: 36 },
   avatarText: { fontFamily: 'DMSans_500Medium', fontSize: 24, color: colors.gold },
   cameraBtn: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, backgroundColor: colors.gold, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
   changePhoto: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.gold },

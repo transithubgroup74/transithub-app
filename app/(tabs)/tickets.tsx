@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { bookings } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
@@ -15,9 +16,9 @@ export default function Tickets() {
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     loadBookings();
-  }, []);
+  }, []));
 
   const loadBookings = async () => {
     try {
@@ -34,7 +35,6 @@ export default function Tickets() {
     } finally {
       setLoading(false);
     }
-    setTimeout(() => setLoading(false), 3000);
   };
 
   const filtered = myBookings.filter((b) => {

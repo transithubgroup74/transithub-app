@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { bookings as bookingsApi } from '../../services/api';
+import { addNotification } from '../../utils/notifications';
 
 export default function TicketDetail() {
   const router = useRouter();
@@ -25,6 +27,11 @@ export default function TicketDetail() {
         if (found) { setBooking(found); setLoading(false); return; }
       }
     } catch (_) {}
+    // Fallback: fetch from backend
+    try {
+      const res = await bookingsApi.getById(id as string);
+      if (res.data) { setBooking(res.data); setLoading(false); return; }
+    } catch (_) {}
     setLoading(false);
   };
 
@@ -33,6 +40,48 @@ export default function TicketDetail() {
     const origin = booking.schedule?.route?.origin;
     const dest = booking.schedule?.route?.destination;
     Share.share({ message: `TransitHub Ticket\n${origin} → ${dest}\nDate: ${booking.schedule?.departsAt?.slice(0, 10)}\nSeat: ${booking.seatNumber}\nRef: ${booking.id}` });
+  };
+
+  const cancelBooking = () => {
+    if (booking.status === 'cancelled') return;
+    Alert.alert(
+      'Cancel Booking',
+      'Are you sure you want to cancel this booking? This cannot be undone.',
+      [
+        { text: 'Keep Booking', style: 'cancel' },
+        {
+          text: 'Cancel Booking',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Cancel on backend if it's a real booking
+              if (!booking.id?.startsWith('LOCAL-')) {
+                await bookingsApi.cancel(booking.id);
+              }
+              // Update local copy
+              const raw = await AsyncStorage.getItem('localBookings');
+              if (raw) {
+                const list = JSON.parse(raw);
+                const updated = list.map((b: any) =>
+                  b.id === booking.id ? { ...b, status: 'cancelled' } : b
+                );
+                await AsyncStorage.setItem('localBookings', JSON.stringify(updated));
+              }
+              setBooking({ ...booking, status: 'cancelled' });
+              await addNotification({
+                icon: '❌',
+                bg: 'rgba(239,68,68,0.15)',
+                title: 'Booking Cancelled',
+                msg: `Your booking for ${booking.schedule?.route?.origin} → ${booking.schedule?.route?.destination} has been cancelled.`,
+                time: 'Just now',
+              });
+            } catch (e: any) {
+              Alert.alert('Error', e?.response?.data?.error || 'Could not cancel booking. Try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -141,6 +190,12 @@ export default function TicketDetail() {
         <TouchableOpacity style={[styles.btnOutline, { marginTop: 8, borderColor: colors.navy }]} onPress={() => router.push('/(tabs)/home' as any)}>
           <Text style={[styles.btnOutlineText, { color: colors.text2 }]}>Book Another Trip</Text>
         </TouchableOpacity>
+
+        {booking.status !== 'cancelled' && (
+          <TouchableOpacity style={styles.cancelBtn} onPress={cancelBooking}>
+            <Text style={styles.cancelBtnText}>Cancel Booking</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -175,4 +230,6 @@ const styles = StyleSheet.create({
   qrHint: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: '#6B85AA' },
   btnOutline: { borderWidth: 1, borderColor: colors.gold, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   btnOutlineText: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.gold },
+  cancelBtn: { marginTop: 8, borderWidth: 1, borderColor: colors.red ?? '#EF4444', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  cancelBtnText: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.red ?? '#EF4444' },
 });

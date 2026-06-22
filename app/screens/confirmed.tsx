@@ -1,15 +1,19 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { bookings as bookingsApi } from '../../services/api';
 
 
 export default function Confirmed() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
   const p = useLocalSearchParams<{ from: string; to: string; date: string; op: string; dep: string; arr: string; seat: string; total: string; busClass: string }>();
   const bookingId = 'THB' + Date.now().toString().slice(-8);
   const code = `THB-2025-${(p.from || '').substring(0, 3).toUpperCase()}-${(p.to || '').substring(0, 3).toUpperCase()}-${String(p.seat).padStart(4, '0')}`;
@@ -36,6 +40,28 @@ Show this at the station gate.
 
   const downloadTicket = () => {
     Share.share({ message: ticketText, title: `TransitHub Ticket - ${bookingId}` });
+  };
+
+  const emailReceipt = async () => {
+    setSendingReceipt(true);
+    try {
+      // Find the real booking id from localBookings
+      const raw = await AsyncStorage.getItem('localBookings');
+      const list = raw ? JSON.parse(raw) : [];
+      const realBooking = list.find((b: any) => !b.id?.startsWith('LOCAL-'));
+      if (realBooking) {
+        await bookingsApi.sendReceipt(realBooking.id);
+        Alert.alert('Receipt Sent', `A receipt has been sent to your registered email.`);
+      } else {
+        // Fallback: share via email
+        Share.share({ message: ticketText, title: `TransitHub Receipt - ${bookingId}` });
+      }
+    } catch {
+      // Fallback to share if API fails
+      Share.share({ message: ticketText, title: `TransitHub Receipt - ${bookingId}` });
+    } finally {
+      setSendingReceipt(false);
+    }
   };
 
   return (
@@ -95,6 +121,12 @@ Show this at the station gate.
             <Text style={styles.btnOutlineText}>Download</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity style={[styles.btnOutline, { marginBottom: 8, borderColor: colors.navy }]} onPress={emailReceipt} disabled={sendingReceipt}>
+          <Text style={[styles.btnOutlineText, { color: colors.text2 }]}>
+            {sendingReceipt ? 'Sending...' : '📧 Email Receipt'}
+          </Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.btnGold} onPress={() => router.push('/(tabs)/tickets')}>
           <Text style={styles.btnGoldText}>View My Tickets</Text>

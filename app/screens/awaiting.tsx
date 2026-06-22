@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addNotification } from '../../utils/notifications';
+import { scheduleTripReminders } from '../../utils/pushNotifications';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -51,6 +52,14 @@ export default function Awaiting() {
       clearInterval(timerRef.current);
       await saveBookingLocally();
       await addNotification({ icon: '✅', bg: 'rgba(0,201,167,0.15)', title: 'Booking Confirmed!', msg: `Seat ${p.seat} on ${p.from}→${p.to} confirmed. Departs ${p.dep} on ${p.date}.`, time: 'Just now' });
+      // Schedule push reminders for the trip
+      try {
+        const [day, time] = [p.date, p.dep];
+        const departsAt = new Date(`${day}T${time?.replace(/\s?(AM|PM)/i, '') || '06:00'}:00`);
+        if (!isNaN(departsAt.getTime())) {
+          await scheduleTripReminders(p.from, p.to, departsAt, p.seat);
+        }
+      } catch (_) {}
       router.replace({ pathname: '/screens/confirmed', params: p });
     }, 3000);
 

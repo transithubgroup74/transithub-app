@@ -36,6 +36,8 @@ export const bookings = {
   getMine: () => api.get('/bookings/my'),
   getById: (id: string) => api.get(`/bookings/${id}`),
   getBookedSeats: (scheduleId: string) => api.get(`/bookings/seats/${scheduleId}`),
+  cancel: (id: string) => api.post(`/bookings/${id}/cancel`),
+  sendReceipt: (id: string) => api.post(`/bookings/${id}/receipt`),
 };
 
 export const payments = {
