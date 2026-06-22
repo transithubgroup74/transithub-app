@@ -2,38 +2,9 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Rect } from 'react-native-svg';
+import QRCode from 'react-native-qrcode-svg';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-function QRCode() {
-  return (
-    <Svg width={110} height={110} viewBox="0 0 80 80">
-      <Rect x={5} y={5} width={25} height={25} fill="#C9A84C" />
-      <Rect x={8} y={8} width={19} height={19} fill="#020E1A" />
-      <Rect x={11} y={11} width={13} height={13} fill="#C9A84C" />
-      <Rect x={50} y={5} width={25} height={25} fill="#C9A84C" />
-      <Rect x={53} y={8} width={19} height={19} fill="#020E1A" />
-      <Rect x={56} y={11} width={13} height={13} fill="#C9A84C" />
-      <Rect x={5} y={50} width={25} height={25} fill="#C9A84C" />
-      <Rect x={8} y={53} width={19} height={19} fill="#020E1A" />
-      <Rect x={11} y={56} width={13} height={13} fill="#C9A84C" />
-      <Rect x={35} y={5} width={5} height={5} fill="#C9A84C" />
-      <Rect x={43} y={5} width={5} height={5} fill="#C9A84C" />
-      <Rect x={35} y={13} width={5} height={5} fill="#C9A84C" />
-      <Rect x={43} y={13} width={5} height={5} fill="#C9A84C" />
-      <Rect x={35} y={35} width={5} height={5} fill="#C9A84C" />
-      <Rect x={43} y={43} width={5} height={5} fill="#C9A84C" />
-      <Rect x={51} y={35} width={5} height={5} fill="#C9A84C" />
-      <Rect x={59} y={43} width={5} height={5} fill="#C9A84C" />
-      <Rect x={67} y={35} width={8} height={5} fill="#C9A84C" />
-      <Rect x={35} y={51} width={5} height={5} fill="#C9A84C" />
-      <Rect x={43} y={59} width={5} height={5} fill="#C9A84C" />
-      <Rect x={59} y={51} width={5} height={5} fill="#C9A84C" />
-      <Rect x={67} y={59} width={8} height={8} fill="#C9A84C" />
-    </Svg>
-  );
-}
 
 export default function TicketDetail() {
   const router = useRouter();
@@ -152,7 +123,12 @@ export default function TicketDetail() {
 
           <View style={styles.divider} />
           <View style={styles.qrBox}>
-            <QRCode />
+            <QRCode
+              value={`TRANSITHUB|${booking.id}|${origin}|${dest}|${date}|${dep}|SEAT:${booking.seatNumber}|THB-${ref}`}
+              size={120}
+              color="#1B3A6B"
+              backgroundColor="#ffffff"
+            />
             <Text style={styles.qrCode}>THB-{ref}</Text>
             <Text style={styles.qrHint}>Show at the station gate</Text>
           </View>

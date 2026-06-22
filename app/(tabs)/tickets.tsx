@@ -3,12 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bookings } from '../../services/api';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { darkColors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Tickets() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [tab, setTab] = useState<'upcoming' | 'completed' | 'cancelled'>('upcoming');
+  const styles = getStyles(colors);
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -111,7 +114,7 @@ export default function Tickets() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   back: { fontSize: 22, color: colors.gold, padding: 4 },
