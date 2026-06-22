@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PaystackWebView from 'react-native-paystack-webview';
+import { Paystack } from 'react-native-paystack-webview';
 
 const PAYSTACK_PUBLIC_KEY = 'pk_test_ce7e4e8adb4bef6510fbe1fb7bf04d52b2f7c001';
 
@@ -68,7 +68,7 @@ export default function Payment() {
 
   if (showPaystack) {
     return (
-      <PaystackWebView
+      <Paystack
         paystackKey={PAYSTACK_PUBLIC_KEY}
         amount={amountInPesewas}
         billingEmail={userEmail}
@@ -76,7 +76,7 @@ export default function Payment() {
         channels={isMomo ? ['mobile_money'] : isCard ? ['card'] : ['bank']}
         onCancel={onPaymentCancel}
         onSuccess={onPaymentSuccess}
-        autoStart
+        autoStart={true}
       />
     );
   }
@@ -100,7 +100,7 @@ export default function Payment() {
         <Text style={styles.sectionLabel}>Choose Payment Method</Text>
 
         <Text style={styles.subLabel}>📱 Mobile Money</Text>
-        <View style={styles.grid3}>
+        <View style={styles.grid2}>
           {MOMO.map((m) => (
             <TouchableOpacity key={m.id} style={[styles.payOpt, selected === m.id && styles.payOptSel]} onPress={() => setSelected(m.id)}>
               <Text style={[styles.payLabel, { color: m.color }]}>{m.label}</Text>
@@ -128,7 +128,14 @@ export default function Payment() {
         </View>
 
         {isMomo && (
-          <TextInput style={[styles.input, { marginTop: 12 }]} placeholder="🇬🇭 +233 Enter MoMo number" placeholderTextColor={colors.gray} keyboardType="phone-pad" value={momoNum} onChangeText={setMomoNum} />
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            placeholder={`🇬🇭 +233 Enter ${selected === 'mtn' ? 'MTN MoMo' : selected === 'telecel' ? 'Telecel Cash' : 'AirtelTigo Money'} number`}
+            placeholderTextColor={colors.gray}
+            keyboardType="phone-pad"
+            value={momoNum}
+            onChangeText={setMomoNum}
+          />
         )}
 
         {isCard && (
