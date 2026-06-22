@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Paystack } from 'react-native-paystack-webview';
+import { WebView } from 'react-native-webview';
 
 const PAYSTACK_PUBLIC_KEY = 'pk_test_ce7e4e8adb4bef6510fbe1fb7bf04d52b2f7c001';
 
@@ -43,8 +43,6 @@ export default function Payment() {
   const isMomo = ['mtn', 'telecel', 'airteltigo'].includes(selected);
   const isCard = ['visa', 'mastercard'].includes(selected);
 
-  const amountInPesewas = Math.round(parseFloat(p.total || '0') * 100);
-
   const processPayment = async () => {
     if (!selected) return Alert.alert('Select a payment method');
     if (isMomo && !momoNum) return Alert.alert('Enter your MoMo number');
@@ -56,28 +54,58 @@ export default function Payment() {
     setShowPaystack(true);
   };
 
-  const onPaymentSuccess = async () => {
-    setShowPaystack(false);
-    router.replace({ pathname: '/screens/awaiting', params: p });
-  };
+  const paystackHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;background:#020E1A;display:flex;align-items:center;justify-content:center;height:100vh;">
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script>
+  var handler = PaystackPop.setup({
+    key: '${PAYSTACK_PUBLIC_KEY}',
+    email: '${userEmail}',
+    amount: ${Math.round(parseFloat(p.total || '0') * 100)},
+    currency: 'GHS',
+    channels: ${isMomo ? "['mobile_money']" : isCard ? "['card']" : "['bank']"},
+    callback: function(response) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'success', ref: response.reference }));
+    },
+    onClose: function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'cancelled' }));
+    }
+  });
+  handler.openIframe();
+</script>
+</body>
+</html>`;
 
-  const onPaymentCancel = () => {
-    setShowPaystack(false);
-    Alert.alert('Payment Cancelled', 'Your payment was cancelled. Please try again.');
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      setShowPaystack(false);
+      if (data.status === 'success') {
+        router.replace({ pathname: '/screens/awaiting', params: p });
+      } else {
+        Alert.alert('Payment Cancelled', 'Your payment was cancelled. Please try again.');
+      }
+    } catch {}
   };
 
   if (showPaystack) {
     return (
-      <Paystack
-        paystackKey={PAYSTACK_PUBLIC_KEY}
-        amount={amountInPesewas}
-        billingEmail={userEmail}
-        currency="GHS"
-        channels={isMomo ? ['mobile_money'] : isCard ? ['card'] : ['bank']}
-        onCancel={onPaymentCancel}
-        onSuccess={onPaymentSuccess}
-        autoStart={true}
-      />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#020E1A' }}>
+        <TouchableOpacity onPress={() => setShowPaystack(false)} style={{ padding: 16 }}>
+          <Text style={{ color: '#C9A84C', fontSize: 22 }}>← Back</Text>
+        </TouchableOpacity>
+        <WebView
+          source={{ html: paystackHtml }}
+          onMessage={handleWebViewMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+          renderLoading={() => <ActivityIndicator color="#C9A84C" style={{ flex: 1 }} />}
+        />
+      </SafeAreaView>
     );
   }
 
@@ -168,7 +196,6 @@ const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   totalText: { fontFamily: 'DMSans_500Medium', fontSize: 13, color: colors.text },
   sectionLabel: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.text, marginBottom: 10 },
   subLabel: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.gold, marginBottom: 6 },
-  grid3: { flexDirection: 'row', gap: 6, marginBottom: 4 },
   grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
   payOpt: { flex: 1, minWidth: '45%', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.fborder, borderRadius: 10, padding: 10, alignItems: 'center' },
   payOptSel: { borderColor: colors.gold, backgroundColor: 'rgba(201,168,76,0.1)' },
