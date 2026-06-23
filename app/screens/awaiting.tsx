@@ -4,19 +4,24 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addNotification } from '../../utils/notifications';
 import { scheduleTripReminders } from '../../utils/pushNotifications';
+import { bookings as bookingsApi } from '../../services/api';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Awaiting() {
   const router = useRouter();
-  const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string; op: string; dep: string; arr: string; date: string; busClass: string }>();
+  const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string; op: string; dep: string; arr: string; date: string; busClass: string; scheduleId: string }>();
   const [seconds, setSeconds] = useState(150);
   const timerRef = useRef<any>(null);
 
   const saveBookingLocally = async () => {
     try {
+      const displayId = 'THB' + Date.now().toString().slice(-8);
+      const code = `THB-2025-${(p.from || '').substring(0, 3).toUpperCase()}-${(p.to || '').substring(0, 3).toUpperCase()}-${String(p.seat).padStart(4, '0')}`;
+      const qrValue = `TRANSITHUB|${displayId}|${p.from}|${p.to}|${p.date}|${p.dep}|SEAT:${p.seat}|${code}`;
+
       const existing = await AsyncStorage.getItem('localBookings');
-      const bookings = existing ? JSON.parse(existing) : [];
+      const localBookings = existing ? JSON.parse(existing) : [];
       const newBooking = {
         id: 'LOCAL-' + Date.now(),
         status: 'confirmed',
@@ -30,10 +35,24 @@ export default function Awaiting() {
         operator: p.op,
         busClass: p.busClass,
         arrivalTime: p.arr,
+        qrValue,
+        displayId,
       };
-      bookings.unshift(newBooking);
-      await AsyncStorage.setItem('localBookings', JSON.stringify(bookings));
-    } catch (_) {}
+      localBookings.unshift(newBooking);
+      await AsyncStorage.setItem('localBookings', JSON.stringify(localBookings));
+
+      // Also create on backend if scheduleId is available (non-mock)
+      const scheduleId = (p as any).scheduleId;
+      if (scheduleId && !scheduleId.startsWith('mock-')) {
+        try {
+          await bookingsApi.create(scheduleId, parseInt(p.seat), qrValue);
+        } catch (_) {}
+      }
+
+      return qrValue;
+    } catch (_) {
+      return undefined;
+    }
   };
 
   useEffect(() => {

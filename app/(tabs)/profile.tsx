@@ -18,7 +18,7 @@ const MENU = [
 
 export default function Profile() {
   const router = useRouter();
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark, toggleTheme, setSystemDefault, isSystemDefault } = useTheme();
   const styles = getStyles(colors);
   const [name, setName] = useState('Traveller');
   const [email, setEmail] = useState('');
@@ -131,20 +131,27 @@ export default function Profile() {
         </View>
 
         {/* Theme toggle */}
-        <View style={[styles.card, { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 }]}>
-          <Text style={{ fontSize: 18, width: 28 }}>{isDark ? '🌙' : '☀️'}</Text>
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[styles.menuLabel, { color: colors.text }]}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
-            <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2 }}>
-              {isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-            </Text>
+        <View style={[styles.card, { paddingVertical: 14 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, width: 28 }}>{isDark ? '🌙' : '☀️'}</Text>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
+              <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 11, color: colors.text2 }}>
+                {isSystemDefault ? 'Using system default' : isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: colors.fborder, true: colors.navy }}
+              thumbColor={colors.gold}
+            />
           </View>
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: colors.fborder, true: colors.navy }}
-            thumbColor={colors.gold}
-          />
+          {!isSystemDefault && (
+            <TouchableOpacity onPress={setSystemDefault} style={{ marginTop: 10, alignSelf: 'flex-start', marginLeft: 38 }}>
+              <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold }}>↺ Use system default</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* App version */}

@@ -31,8 +31,8 @@ export const schedules = {
 };
 
 export const bookings = {
-  create: (scheduleId: string, seatNumber: number) =>
-    api.post('/bookings', { scheduleId, seatNumber }),
+  create: (scheduleId: string, seatNumber: number, qrCode?: string) =>
+    api.post('/bookings', { scheduleId, seatNumber, qrCode }),
   getMine: () => api.get('/bookings/my'),
   getById: (id: string) => api.get(`/bookings/${id}`),
   getBookedSeats: (scheduleId: string) => api.get(`/bookings/seats/${scheduleId}`),

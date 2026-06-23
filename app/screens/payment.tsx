@@ -30,7 +30,7 @@ export default function Payment() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string; op: string; dep: string; arr: string; date: string; busClass: string }>();
+  const p = useLocalSearchParams<{ from: string; to: string; total: string; seat: string; op: string; dep: string; arr: string; date: string; busClass: string; scheduleId: string }>();
   const [selected, setSelected] = useState('');
   const [momoNum, setMomoNum] = useState('');
   const [cardNum, setCardNum] = useState('');

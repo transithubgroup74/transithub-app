@@ -6,14 +6,32 @@ import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const MOCK_REG = [
+  // Early Morning (12am–6am)
+  { id: 'mock-r0a', op: 'Night Rider Express', dep: '02:00 AM', arr: '07:30 AM', dur: '5h 30m', seats: 30, price: 68, color: '#1E40AF', abbr: 'NR', type: 'Standard Coach' },
+  { id: 'mock-r0b', op: 'STC Coaches', dep: '04:30 AM', arr: '10:00 AM', dur: '5h 30m', seats: 22, price: 70, color: '#7C3AED', abbr: 'STC', type: 'Standard Coach' },
+  // Morning (6am–12pm)
   { id: 'mock-r1', op: 'VIP Jeoun', dep: '06:00 AM', arr: '11:30 AM', dur: '5h 30m', seats: 12, price: 80, color: '#DC2626', abbr: 'VIP', type: 'Standard Coach' },
   { id: 'mock-r2', op: 'OA Express', dep: '09:00 AM', arr: '02:30 PM', dur: '5h 30m', seats: 23, price: 78, color: '#2563EB', abbr: 'OA', type: 'Standard Coach' },
+  { id: 'mock-r2b', op: 'Kingdom Transport', dep: '11:00 AM', arr: '04:30 PM', dur: '5h 30m', seats: 35, price: 75, color: '#0891B2', abbr: 'KT', type: 'Standard Coach' },
+  // Afternoon (12pm–6pm)
   { id: 'mock-r3', op: 'STC Coaches', dep: '01:00 PM', arr: '06:30 PM', dur: '5h 30m', seats: 18, price: 76, color: '#7C3AED', abbr: 'STC', type: 'Standard Coach' },
+  { id: 'mock-r3b', op: 'OA Express', dep: '03:30 PM', arr: '09:00 PM', dur: '5h 30m', seats: 27, price: 74, color: '#2563EB', abbr: 'OA', type: 'Standard Coach' },
   { id: 'mock-r4', op: 'Kingdom Transport', dep: '05:00 PM', arr: '10:30 PM', dur: '5h 30m', seats: 40, price: 72, color: '#0891B2', abbr: 'KT', type: 'Standard Coach' },
+  // Evening (6pm–12am)
+  { id: 'mock-r5', op: 'VIP Jeoun', dep: '07:00 PM', arr: '12:30 AM', dur: '5h 30m', seats: 15, price: 78, color: '#DC2626', abbr: 'VIP', type: 'Standard Coach' },
+  { id: 'mock-r6', op: 'Night Rider Express', dep: '09:30 PM', arr: '03:00 AM', dur: '5h 30m', seats: 32, price: 65, color: '#1E40AF', abbr: 'NR', type: 'Standard Coach' },
 ];
 const MOCK_EXEC = [
+  // Early Morning
+  { id: 'mock-e0', op: 'VIP Jeoun Executive', dep: '04:00 AM', arr: '08:30 AM', dur: '4h 30m', seats: 4, price: 160, color: '#C9A84C', abbr: 'VE', type: 'Luxury Coach' },
+  // Morning
   { id: 'mock-e1', op: 'VIP Jeoun Executive', dep: '06:00 AM', arr: '10:30 AM', dur: '4h 30m', seats: 6, price: 150, color: '#C9A84C', abbr: 'VE', type: 'Luxury Coach' },
   { id: 'mock-e2', op: 'Kingdom Executive', dep: '09:00 AM', arr: '01:30 PM', dur: '4h 30m', seats: 14, price: 145, color: '#0891B2', abbr: 'KE', type: 'Luxury Coach' },
+  // Afternoon
+  { id: 'mock-e3', op: 'Kingdom Executive', dep: '01:00 PM', arr: '05:30 PM', dur: '4h 30m', seats: 10, price: 148, color: '#0891B2', abbr: 'KE', type: 'Luxury Coach' },
+  { id: 'mock-e4', op: 'VIP Jeoun Executive', dep: '04:00 PM', arr: '08:30 PM', dur: '4h 30m', seats: 8, price: 152, color: '#C9A84C', abbr: 'VE', type: 'Luxury Coach' },
+  // Evening
+  { id: 'mock-e5', op: 'Kingdom Executive', dep: '07:30 PM', arr: '12:00 AM', dur: '4h 30m', seats: 6, price: 140, color: '#0891B2', abbr: 'KE', type: 'Luxury Coach' },
 ];
 
 const TIME_SLOTS = [
@@ -119,6 +137,31 @@ export default function Results() {
 
   const displayBuses = useMemo(() => {
     let list = [...rawBuses];
+    // Filter out past departures when searching for today
+    const now = new Date();
+    const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const dateLower = (date || '').toLowerCase();
+    const isToday = (() => {
+      // Try ISO format first
+      if (date === now.toISOString().slice(0, 10)) return true;
+      // Check day, month name, and year all appear in the date string
+      const d = now.getDate().toString();
+      const m = months[now.getMonth()];
+      const y = now.getFullYear().toString();
+      return dateLower.includes(d) && dateLower.includes(m) && dateLower.includes(y);
+    })();
+    if (isToday) {
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      list = list.filter((b: any) => {
+        const match = b.dep.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) return true;
+        let h = parseInt(match[1]);
+        const m = parseInt(match[2]);
+        if (match[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+        if (match[3].toUpperCase() === 'AM' && h === 12) h = 0;
+        return h * 60 + m > nowMinutes;
+      });
+    }
     if (timeSlot !== null) {
       const slot = TIME_SLOTS[timeSlot];
       list = list.filter((b: any) => { const h = depHour(b.dep); return h >= slot.from && h < slot.to; });
@@ -127,7 +170,7 @@ export default function Results() {
     if (maxPrice !== null) list = list.filter((b: any) => b.price <= maxPrice);
     list.sort((a: any, b: any) => sortBy === 'price' ? a.price - b.price : depHour(a.dep) - depHour(b.dep));
     return list;
-  }, [rawBuses, timeSlot, selectedOp, maxPrice, sortBy]);
+  }, [rawBuses, timeSlot, selectedOp, maxPrice, sortBy, date]);
 
   const activeFilters = [timeSlot !== null, selectedOp !== null, maxPrice !== null].filter(Boolean).length;
 

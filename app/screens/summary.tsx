@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Summary() {
   const router = useRouter();
-  const p = useLocalSearchParams<{ from: string; to: string; date: string; op: string; dep: string; arr: string; price: string; seat: string }>();
+  const p = useLocalSearchParams<{ from: string; to: string; date: string; op: string; dep: string; arr: string; price: string; seat: string; scheduleId: string; busClass: string }>();
   const base = parseFloat(p.price || '0');
   const fee = 3;
   const total = base + fee;

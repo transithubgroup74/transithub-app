@@ -1,29 +1,115 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const NAMES = ['Michael Mensah', 'Abena Osei', 'Kwame Asante', 'Ama Boateng'];
+const API = 'https://transithub-backend-production.up.railway.app';
 
-type ScanResult = { type: 'valid' | 'invalid' | 'scanned' | 'cancelled'; name?: string; seat?: number } | null;
+type ScanResult = {
+  type: 'valid' | 'invalid' | 'scanned' | 'cancelled' | 'error';
+  name?: string;
+  seat?: number;
+  route?: string;
+  message?: string;
+} | null;
 
 export default function ConductorScan() {
   const router = useRouter();
-  const [scanned, setScanned] = useState(0);
+  const [permission, requestPermission] = useCameraPermissions();
   const [result, setResult] = useState<ScanResult>(null);
+  const [loading, setLoading] = useState(false);
+  const [scanned, setScanned] = useState(0);
+  const processingRef = useRef(false);
 
-  const simulate = (type: 'valid' | 'invalid' | 'scanned' | 'cancelled') => {
-    const name = NAMES[Math.floor(Math.random() * NAMES.length)];
-    const seat = Math.floor(Math.random() * 45) + 1;
-    setResult({ type, name, seat });
-    if (type === 'valid') setScanned((s) => s + 1);
+  const handleQRScan = async ({ data }: { data: string }) => {
+    if (processingRef.current || loading) return;
+    processingRef.current = true;
+    setLoading(true);
+
+    try {
+      // QR format: TRANSITHUB|{bookingId}|{from}|{to}|{date}|{dep}|SEAT:{seat}|{code}
+      const parts = data.split('|');
+      if (parts[0] !== 'TRANSITHUB' || parts.length < 2) {
+        setResult({ type: 'invalid', message: 'This QR code is not a valid TransitHub ticket.' });
+        return;
+      }
+
+      // Extract booking ref (THB-XXXXXXXX) from the code field or parse booking ID
+      const code = parts[7] || '';
+      const bookingRef = parts[1]; // This is the display ID like THB06954120
+
+      // First verify the booking exists via the ref code in our system
+      // We search by the QR code value
+      const verifyRes = await fetch(`${API}/api/bookings/verify-qr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qrCode: data }),
+      });
+
+      if (!verifyRes.ok) {
+        // Fall back to showing valid for demo if backend doesn't have verify-qr yet
+        setResult({ type: 'invalid', message: 'Ticket not found in system.' });
+        return;
+      }
+
+      const booking = await verifyRes.json();
+
+      if (booking.status === 'cancelled') {
+        setResult({ type: 'cancelled', name: booking.passenger, seat: booking.seat, route: booking.route });
+        return;
+      }
+
+      if (booking.status === 'completed') {
+        setResult({ type: 'scanned', name: booking.passenger, seat: booking.seat, route: booking.route });
+        return;
+      }
+
+      // Mark as completed
+      const completeRes = await fetch(`${API}/api/bookings/${booking.id}/complete`, {
+        method: 'POST',
+      });
+
+      if (completeRes.ok) {
+        const completed = await completeRes.json();
+        setScanned(s => s + 1);
+        setResult({ type: 'valid', name: completed.passenger, seat: completed.seat, route: completed.route });
+      } else {
+        const err = await completeRes.json();
+        setResult({ type: 'error', message: err.error || 'Failed to mark ticket as complete.' });
+      }
+    } catch {
+      setResult({ type: 'error', message: 'Network error. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const overlayBg = result?.type === 'valid' ? 'rgba(0,80,60,.96)' : result?.type === 'invalid' ? 'rgba(100,0,20,.96)' : result?.type === 'scanned' ? 'rgba(80,45,0,.96)' : 'rgba(80,0,0,.96)';
-  const icon = result?.type === 'valid' ? '✅' : result?.type === 'invalid' ? '❌' : result?.type === 'scanned' ? '⚠️' : '⊘';
-  const scanTitle = result?.type === 'valid' ? 'BOARDING APPROVED' : result?.type === 'invalid' ? 'INVALID TICKET' : result?.type === 'scanned' ? 'ALREADY SCANNED' : 'TICKET CANCELLED';
-  const scanMsg = result?.type === 'invalid' ? 'This QR code is not recognised. Please check the passenger has a valid booking.' : result?.type === 'scanned' ? 'This ticket was already scanned at 05:45 AM. Contact station management.' : result?.type === 'cancelled' ? 'This ticket was cancelled by the passenger and is no longer valid.' : '';
+  const dismiss = () => {
+    setResult(null);
+    processingRef.current = false;
+  };
+
+  const overlayBg = result?.type === 'valid' ? 'rgba(0,80,60,.96)' : result?.type === 'invalid' || result?.type === 'error' ? 'rgba(100,0,20,.96)' : result?.type === 'scanned' ? 'rgba(80,45,0,.96)' : 'rgba(80,0,0,.96)';
+  const icon = result?.type === 'valid' ? '✅' : result?.type === 'invalid' || result?.type === 'error' ? '❌' : result?.type === 'scanned' ? '⚠️' : '⊘';
+  const scanTitle = result?.type === 'valid' ? 'BOARDING APPROVED' : result?.type === 'invalid' ? 'INVALID TICKET' : result?.type === 'scanned' ? 'ALREADY SCANNED' : result?.type === 'error' ? 'ERROR' : 'TICKET CANCELLED';
+
+  if (!permission) return <View style={styles.container} />;
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionBox}>
+          <Text style={styles.permissionTitle}>Camera Permission Required</Text>
+          <Text style={styles.permissionSub}>The camera is needed to scan passenger QR codes.</Text>
+          <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+            <Text style={styles.permissionBtnText}>Allow Camera</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,25 +124,24 @@ export default function ConductorScan() {
         <Text style={styles.sub}>Point camera at passenger ticket</Text>
 
         <View style={styles.scanBox}>
-          <Text style={styles.camIcon}>📷</Text>
+          {loading ? (
+            <ActivityIndicator color={colors.gold} size="large" />
+          ) : (
+            <CameraView
+              style={StyleSheet.absoluteFillObject}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={result ? undefined : handleQRScan}
+            />
+          )}
           <View style={[styles.corner, styles.tl]} /><View style={[styles.corner, styles.tr]} />
           <View style={[styles.corner, styles.bl]} /><View style={[styles.corner, styles.br]} />
           <View style={styles.scanLine} />
         </View>
 
         <View style={styles.schedCard}>
-          <Text style={styles.schedLabel}>Today's Schedule</Text>
-          <Text style={styles.schedRoute}>Kumasi → Accra</Text>
-          <Text style={styles.schedTime}>06:00 AM · VIP Bus</Text>
-          <Text style={styles.schedCount}>Scanned: <Text style={{ color: colors.text }}>{scanned}</Text></Text>
-        </View>
-
-        <Text style={styles.simLabel}>Simulate scan:</Text>
-        <View style={styles.simGrid}>
-          <TouchableOpacity style={[styles.simBtn, { backgroundColor: colors.green }]} onPress={() => simulate('valid')}><Text style={styles.simBtnText}>✓ Valid</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.simBtn, { backgroundColor: colors.red }]} onPress={() => simulate('invalid')}><Text style={styles.simBtnText}>✗ Invalid</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.simBtn, { backgroundColor: colors.orange }]} onPress={() => simulate('scanned')}><Text style={[styles.simBtnText, { color: colors.bg }]}>⚠ Scanned</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.simBtn, { backgroundColor: '#444' }]} onPress={() => simulate('cancelled')}><Text style={styles.simBtnText}>⊘ Cancelled</Text></TouchableOpacity>
+          <Text style={styles.schedLabel}>Session</Text>
+          <Text style={styles.schedCount}>Passengers Boarded: <Text style={{ color: colors.text }}>{scanned}</Text></Text>
         </View>
       </View>
 
@@ -67,11 +152,23 @@ export default function ConductorScan() {
           {result?.type === 'valid' && (
             <View style={styles.overlayCard}>
               <Text style={styles.overlayName}>{result.name}</Text>
-              <Text style={styles.overlaySub}>Seat {result.seat} · Kumasi → Accra</Text>
+              <Text style={styles.overlaySub}>Seat {result.seat} · {result.route}</Text>
             </View>
           )}
-          {scanMsg ? <Text style={styles.overlayMsg}>{scanMsg}</Text> : null}
-          <TouchableOpacity style={styles.overlayBtn} onPress={() => setResult(null)}>
+          {(result?.type === 'scanned' || result?.type === 'cancelled') && (
+            <View style={styles.overlayCard}>
+              <Text style={styles.overlayName}>{result.name}</Text>
+              <Text style={styles.overlaySub}>Seat {result.seat} · {result.route}</Text>
+            </View>
+          )}
+          {(result?.type === 'invalid' || result?.type === 'error' || result?.type === 'scanned' || result?.type === 'cancelled') && (
+            <Text style={styles.overlayMsg}>
+              {result?.message ||
+                (result?.type === 'scanned' ? 'This ticket was already scanned. Contact station management.' :
+                 result?.type === 'cancelled' ? 'This ticket was cancelled and is no longer valid.' : '')}
+            </Text>
+          )}
+          <TouchableOpacity style={styles.overlayBtn} onPress={dismiss}>
             <Text style={styles.overlayBtnText}>Scan Next Passenger</Text>
           </TouchableOpacity>
         </View>
@@ -89,23 +186,21 @@ const styles = StyleSheet.create({
   body: { flex: 1, alignItems: 'center', padding: 24 },
   title: { fontFamily: 'DMSans_500Medium', fontSize: 15, color: colors.text, marginBottom: 6 },
   sub: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2, marginBottom: 20 },
-  scanBox: { width: 160, height: 160, borderRadius: 12, backgroundColor: 'rgba(10,22,40,.8)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, position: 'relative' },
-  camIcon: { fontSize: 40, opacity: 0.3 },
-  corner: { position: 'absolute', width: 28, height: 28 },
+  scanBox: { width: 240, height: 240, borderRadius: 12, backgroundColor: 'rgba(10,22,40,.8)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, position: 'relative', overflow: 'hidden' },
+  corner: { position: 'absolute', width: 28, height: 28, zIndex: 10 },
   tl: { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3, borderColor: colors.gold, borderTopLeftRadius: 6 },
   tr: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderColor: colors.gold, borderTopRightRadius: 6 },
   bl: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: colors.gold, borderBottomLeftRadius: 6 },
   br: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderColor: colors.gold, borderBottomRightRadius: 6 },
-  scanLine: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: colors.gold, opacity: 0.6 },
+  scanLine: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: colors.gold, opacity: 0.6, zIndex: 10 },
   schedCard: { backgroundColor: colors.card, borderRadius: 12, padding: 12, width: '100%', alignItems: 'center', marginBottom: 16 },
   schedLabel: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, marginBottom: 4 },
-  schedRoute: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.text },
-  schedTime: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold },
   schedCount: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, marginTop: 6 },
-  simLabel: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2, marginBottom: 10 },
-  simGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, width: '100%' },
-  simBtn: { flex: 1, minWidth: '45%', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  simBtnText: { fontFamily: 'DMSans_500Medium', fontSize: 13, color: '#fff' },
+  permissionBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  permissionTitle: { fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text, marginBottom: 8 },
+  permissionSub: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2, textAlign: 'center', marginBottom: 24 },
+  permissionBtn: { backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
+  permissionBtnText: { fontFamily: 'DMSans_500Medium', fontSize: 14, color: colors.bg },
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   overlayIcon: { fontSize: 72, marginBottom: 16 },
   overlayTitle: { fontFamily: 'Syne_700Bold', fontSize: 24, color: '#fff', marginBottom: 10 },
