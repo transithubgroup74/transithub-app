@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUnreadCount } from '../../utils/notifications';
 import { getRecentSearches, clearRecentSearches, RecentSearch } from '../../utils/recentSearches';
+import { getSavedRoutes, saveRoute, removeRoute, SavedRoute } from '../../utils/savedRoutes';
 
 const POPULAR = [
   { from: 'Kumasi', to: 'Accra', price: 80 },
@@ -27,6 +28,7 @@ export default function Home() {
   const [greeting, setGreeting] = useState('Good morning');
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
   useFocusEffect(useCallback(() => {
     const load = async () => {
@@ -42,6 +44,7 @@ export default function Home() {
       else if (ue) setUserName(ue.split('@')[0]);
       getUnreadCount().then(setUnreadCount);
       getRecentSearches().then(setRecentSearches);
+      getSavedRoutes().then(setSavedRoutes);
     };
     load();
   }, []));
@@ -162,13 +165,57 @@ export default function Home() {
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          {POPULAR.map((r, i) => (
-            <TouchableOpacity key={i} style={s.chip} onPress={() => { setRoute(r.from, r.to).then(() => search(r.from, r.to)); }}>
-              <Text style={s.chipRoute}>{r.from}→{r.to}</Text>
-              <Text style={s.chipPrice}>GHS {r.price}</Text>
-            </TouchableOpacity>
-          ))}
+          {POPULAR.map((r, i) => {
+            const isSaved = savedRoutes.some((s) => s.from === r.from && s.to === r.to);
+            return (
+              <TouchableOpacity key={i} style={s.chip} onPress={() => { setRoute(r.from, r.to).then(() => search(r.from, r.to)); }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={s.chipRoute}>{r.from}→{r.to}</Text>
+                  <TouchableOpacity
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      if (isSaved) { await removeRoute(r.from, r.to); } else { await saveRoute(r.from, r.to); }
+                      getSavedRoutes().then(setSavedRoutes);
+                    }}
+                  >
+                    <Text style={{ fontSize: 14 }}>{isSaved ? '❤️' : '🤍'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={s.chipPrice}>GHS {r.price}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
+
+        {savedRoutes.length > 0 && (
+          <>
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>❤️ Saved Routes</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              {savedRoutes.map((r, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[s.chip, { borderColor: colors.gold }]}
+                  onPress={() => { setRoute(r.from, r.to).then(() => search(r.from, r.to)); }}
+                >
+                  <Text style={s.chipRoute}>{r.from}→{r.to}</Text>
+                  <TouchableOpacity
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      await removeRoute(r.from, r.to);
+                      getSavedRoutes().then(setSavedRoutes);
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, color: colors.text2 }}>✕</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
 
         {recentSearches.length > 0 && (
           <>
