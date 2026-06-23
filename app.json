@@ -2,6 +2,7 @@
   "expo": {
     "name": "TransitHub",
     "slug": "transit-hub",
+    "privacy": "public",
     "version": "1.0.0",
     "scheme": "transithub",
     "orientation": "portrait",
