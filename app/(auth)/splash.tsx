@@ -1,123 +1,200 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/theme';
-import Svg, { Circle, Rect, Pattern, Defs } from 'react-native-svg';
+import Svg, { Circle, Rect } from 'react-native-svg';
 
-const { width } = Dimensions.get('window');
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const RING_R = 86;
+const RING_C = 2 * Math.PI * RING_R;
 
 export default function Splash() {
   const router = useRouter();
-  const barWidth = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+
+  const ringOffset = useRef(new Animated.Value(RING_C)).current;
+  const markScale = useRef(new Animated.Value(0.4)).current;
+  const markOpacity = useRef(new Animated.Value(0)).current;
+  const shimmerX = useRef(new Animated.Value(-120)).current;
+  const brandY = useRef(new Animated.Value(16)).current;
+  const brandOpacity = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const dot1 = useRef(new Animated.Value(0.25)).current;
+  const dot2 = useRef(new Animated.Value(0.25)).current;
+  const dot3 = useRef(new Animated.Value(0.25)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.timing(barWidth, { toValue: 200, duration: 2000, useNativeDriver: false }),
-    ]).start(() => {
-      router.replace('/(auth)/welcome');
-    });
+    // Ring draws itself
+    Animated.timing(ringOffset, {
+      toValue: 0,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    // Mark pops in
+    Animated.parallel([
+      Animated.timing(markOpacity, { toValue: 1, duration: 500, delay: 300, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(300),
+        Animated.spring(markScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
+      ]),
+    ]).start();
+
+    // Shimmer sweep across the gold
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(900),
+        Animated.timing(shimmerX, {
+          toValue: 120,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerX, { toValue: -120, duration: 0, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Brand rises in
+    Animated.parallel([
+      Animated.timing(brandOpacity, { toValue: 1, duration: 500, delay: 1000, useNativeDriver: true }),
+      Animated.timing(brandY, { toValue: 0, duration: 500, delay: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start();
+
+    // Pulsing rings loop
+    Animated.loop(
+      Animated.timing(pulse, { toValue: 1, duration: 2200, easing: Easing.out(Easing.ease), useNativeDriver: true })
+    ).start();
+
+    // Loading dots
+    const dotLoop = (val: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(val, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 0.25, duration: 400, useNativeDriver: true }),
+        ])
+      );
+    dotLoop(dot1, 0).start();
+    dotLoop(dot2, 200).start();
+    dotLoop(dot3, 400).start();
+
+    const t = setTimeout(() => router.replace('/(auth)/welcome'), 3200);
+    return () => clearTimeout(t);
   }, []);
+
+  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(201,168,76,0.22)', 'rgba(13,31,53,0.5)', colors.bg]}
+        colors={['rgba(201,168,76,0.16)', 'rgba(13,31,53,0.5)', colors.bg]}
         style={StyleSheet.absoluteFill}
       />
-      <Animated.View style={[styles.content, { opacity }]}>
-        {/* Gold circle badge */}
-        <LinearGradient
-          colors={['#F5E090', '#D4A832', '#A07820']}
-          style={styles.badge}
-          start={{ x: 0.38, y: 0.32 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Svg width={42} height={50} viewBox="0 0 42 50">
-            <Rect x={0} y={0} width={42} height={50} rx={21} fill="none" />
-            <Circle cx={21} cy={20} r={8.5} fill={colors.bg} stroke={colors.gold} strokeWidth={2.5} />
-            <Circle cx={21} cy={20} r={4} fill={colors.gold} />
-          </Svg>
-          <Svg width={58} height={30} viewBox="0 0 58 30" style={{ marginTop: 4 }}>
-            <Rect x={0} y={2} width={54} height={22} rx={5} fill={colors.bg} />
-            <Rect x={3} y={5} width={11} height={9} rx={2} fill={colors.gold} opacity={0.45} />
-            <Rect x={17} y={5} width={11} height={9} rx={2} fill={colors.gold} opacity={0.45} />
-            <Rect x={31} y={5} width={11} height={9} rx={2} fill={colors.gold} opacity={0.45} />
-            <Circle cx={12} cy={28} r={5.5} fill={colors.bg} />
-            <Circle cx={12} cy={28} r={2.5} fill={colors.gold} opacity={0.5} />
-            <Circle cx={42} cy={28} r={5.5} fill={colors.bg} />
-            <Circle cx={42} cy={28} r={2.5} fill={colors.gold} opacity={0.5} />
-          </Svg>
-        </LinearGradient>
 
-        <Text style={styles.title}>TransitHub</Text>
-        <Text style={styles.tagline}>INTERCITY TICKETING SYSTEM</Text>
+      <View style={styles.content}>
+        <View style={styles.markWrap}>
+          {/* pulsing rings */}
+          <Animated.View
+            style={[styles.pulseRing, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]}
+          />
 
-        {/* Loading bar */}
-        <View style={styles.barBg}>
-          <Animated.View style={[styles.barFill, { width: barWidth }]} />
+          {/* drawing gold ring */}
+          <Svg width={190} height={190} viewBox="0 0 190 190" style={StyleSheet.absoluteFill}>
+            <AnimatedCircle
+              cx={95}
+              cy={95}
+              r={RING_R}
+              fill="none"
+              stroke={colors.gold}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeDasharray={`${RING_C}`}
+              strokeDashoffset={ringOffset}
+              rotation={-90}
+              origin="95, 95"
+            />
+          </Svg>
+
+          {/* gold mark with bus */}
+          <Animated.View style={{ opacity: markOpacity, transform: [{ scale: markScale }] }}>
+            <View style={styles.badge}>
+              <Svg width={120} height={120} viewBox="0 0 120 120">
+                <Circle cx={60} cy={48} r={9} fill={colors.bg} />
+                <Rect x={32} y={58} width={56} height={30} rx={6} fill={colors.bg} />
+                <Rect x={37} y={63} width={11} height={9} rx={2} fill={colors.gold} />
+                <Rect x={50} y={63} width={11} height={9} rx={2} fill={colors.gold} />
+                <Rect x={63} y={63} width={11} height={9} rx={2} fill={colors.gold} />
+                <Rect x={77} y={68} width={6} height={9} rx={1} fill={colors.gold} />
+                <Circle cx={44} cy={90} r={5} fill={colors.gold} />
+                <Circle cx={76} cy={90} r={5} fill={colors.gold} />
+              </Svg>
+
+              {/* shimmer sweep */}
+              <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerX }, { skewX: '-20deg' }] }]} />
+            </View>
+          </Animated.View>
         </View>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </Animated.View>
+
+        {/* brand */}
+        <Animated.View style={{ alignItems: 'center', opacity: brandOpacity, transform: [{ translateY: brandY }] }}>
+          <Text style={styles.title}>TransitHub</Text>
+          <Text style={styles.tagline}>Ghana's intercity travel app</Text>
+        </Animated.View>
+
+        {/* loading dots */}
+        <View style={styles.dots}>
+          <Animated.View style={[styles.dot, { opacity: dot1 }]} />
+          <Animated.View style={[styles.dot, { opacity: dot2 }]} />
+          <Animated.View style={[styles.dot, { opacity: dot3 }]} />
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    alignItems: 'center',
+  container: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  content: { alignItems: 'center' },
+  markWrap: { width: 190, height: 190, justifyContent: 'center', alignItems: 'center', marginBottom: 40 },
+  pulseRing: {
+    position: 'absolute',
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    borderWidth: 2,
+    borderColor: colors.gold,
   },
   badge: {
-    width: 168,
-    height: 168,
-    borderRadius: 84,
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    backgroundColor: colors.gold,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 34,
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 40,
-    elevation: 20,
+    overflow: 'hidden',
+  },
+  shimmer: {
+    position: 'absolute',
+    top: -20,
+    width: 30,
+    height: 160,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   title: {
     fontFamily: 'Syne_800ExtraBold',
-    fontSize: 40,
+    fontSize: 36,
     color: colors.white,
     letterSpacing: -0.5,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   tagline: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: 11,
-    color: colors.gold,
-    letterSpacing: 3.5,
-    marginBottom: 52,
-  },
-  barBg: {
-    width: 200,
-    height: 3,
-    backgroundColor: 'rgba(27,58,107,0.45)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: 3,
-    backgroundColor: colors.gold,
-    borderRadius: 2,
-  },
-  loadingText: {
     fontFamily: 'DMSans_400Regular',
-    fontSize: 11,
+    fontSize: 12,
     color: colors.gray,
-    marginTop: 10,
   },
+  dots: { flexDirection: 'row', gap: 8, marginTop: 44 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold },
 });
