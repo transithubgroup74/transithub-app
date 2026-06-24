@@ -141,7 +141,7 @@ export default function Splash() {
         {/* brand */}
         <Animated.View style={{ alignItems: 'center', opacity: brandOpacity, transform: [{ translateY: brandY }] }}>
           <Text style={styles.title}>TransitHub</Text>
-          <Text style={styles.tagline}>Ghana's intercity travel app</Text>
+          <Text style={styles.tagline}>INTERCITY TICKETING SYSTEM</Text>
         </Animated.View>
 
         {/* loading dots */}
@@ -191,9 +191,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagline: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 12,
-    color: colors.gray,
+    fontFamily: 'DMSans_500Medium',
+    fontSize: 11,
+    color: colors.gold,
+    letterSpacing: 3,
   },
   dots: { flexDirection: 'row', gap: 8, marginTop: 44 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold },
