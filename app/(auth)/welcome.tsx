@@ -1,8 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/theme';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 export default function Welcome() {
   const router = useRouter();
@@ -10,18 +9,35 @@ export default function Welcome() {
   return (
     <View style={styles.container}>
       <View style={styles.inner}>
-        {/* Mini gold badge */}
-        <LinearGradient
-          colors={['#F5E090', '#D4A832', '#A07820']}
-          style={styles.badge}
-          start={{ x: 0.38, y: 0.32 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Svg width={22} height={26} viewBox="0 0 42 50">
-            <Circle cx={21} cy={20} r={8.5} fill={colors.bg} stroke={colors.gold} strokeWidth={2.5} />
-            <Circle cx={21} cy={20} r={4} fill={colors.gold} />
+        {/* U1 map-route logo */}
+        <View style={styles.logoWrap}>
+          <Svg width={120} height={120} viewBox="0 0 120 120">
+            {/* winding road */}
+            <Path
+              d="M24,96 Q72,90 54,60 Q42,40 82,30"
+              fill="none"
+              stroke={colors.navy}
+              strokeWidth={10}
+              strokeLinecap="round"
+            />
+            <Path
+              d="M24,96 Q72,90 54,60 Q42,40 82,30"
+              fill="none"
+              stroke={colors.gold}
+              strokeWidth={2}
+              strokeDasharray="4,7"
+              strokeLinecap="round"
+            />
+            {/* start dot */}
+            <Circle cx={24} cy={96} r={7} fill={colors.gold} />
+            {/* destination pin */}
+            <Path
+              d="M82,18 Q98,18 98,34 Q98,47 82,64 Q66,47 66,34 Q66,18 82,18 Z"
+              fill={colors.gold}
+            />
+            <Circle cx={82} cy={34} r={7} fill={colors.bg} />
           </Svg>
-        </LinearGradient>
+        </View>
 
         <Text style={styles.title}>Travel Across Ghana</Text>
         <Text style={styles.subtitle}>
@@ -52,18 +68,12 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   inner: { alignItems: 'center' },
-  badge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  logoWrap: {
+    width: 120,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 18,
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 10,
   },
   title: {
     fontFamily: 'Syne_800ExtraBold',
