@@ -43,7 +43,8 @@
           "color": "#C9A84C",
           "sounds": []
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "runtimeVersion": {
       "policy": "appVersion"
