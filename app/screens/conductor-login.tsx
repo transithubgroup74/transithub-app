@@ -1,13 +1,44 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PasswordInput from '../../components/PasswordInput';
+
+// Approved conductor accounts (mirrors the staff list in the admin dashboard).
+// NOTE: these live in the app for now; full server-side staff auth is part of
+// the deferred "admin dashboard → backend wiring" task.
+const CONDUCTORS: Record<string, { password: string; name: string; company: string }> = {
+  'VIP-CN-04': { password: 'emma2025', name: 'Emmanuel Asare', company: 'VIP Jeoun' },
+  'OA-CN-06': { password: 'kojo2025', name: 'Kojo Antwi', company: 'OA Express' },
+  'STC-CN-08': { password: 'akosua2025', name: 'Akosua Frimpong', company: 'STC' },
+  'KGD-CN-10': { password: 'esi2025', name: 'Esi Boateng', company: 'Kingdom Transport' },
+  'NR-CN-12': { password: 'comfort2025', name: 'Comfort Agyei', company: 'Night Rider Express' },
+  'MMT-CN-14': { password: 'joyce2025', name: 'Joyce Adu', company: 'Metro Mass Transit' },
+};
 
 export default function ConductorLogin() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [staffId, setStaffId] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    const id = staffId.trim().toUpperCase();
+    const match = CONDUCTORS[id];
+    if (!match || match.password !== password) {
+      setError('Invalid Staff ID or password. Conductors only.');
+      return;
+    }
+    setError('');
+    await AsyncStorage.multiSet([
+      ['conductorId', id],
+      ['conductorName', match.name],
+      ['conductorCompany', match.company],
+    ]);
+    router.push('/screens/conductor-scan');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -22,9 +53,29 @@ export default function ConductorLogin() {
             <TouchableOpacity onPress={() => router.back()}><Text style={styles.link}>Passengers tap here.</Text></TouchableOpacity>
           </View>
         </View>
-        <TextInput style={styles.input} placeholder="Conductor Email" placeholderTextColor={colors.gray} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="Password" placeholderTextColor={colors.gray} secureTextEntry value={password} onChangeText={setPassword} />
-        <TouchableOpacity style={styles.btnGold} onPress={() => router.push('/screens/conductor-scan')}>
+
+        <Text style={styles.label}>Staff ID</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. VIP-CN-04"
+          placeholderTextColor={colors.gray}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          value={staffId}
+          onChangeText={(t) => { setStaffId(t); if (error) setError(''); }}
+        />
+
+        <Text style={styles.label}>Password</Text>
+        <PasswordInput
+          colors={colors}
+          placeholder="Password"
+          value={password}
+          onChangeText={(t) => { setPassword(t); if (error) setError(''); }}
+        />
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.btnGold} onPress={handleLogin}>
           <Text style={styles.btnGoldText}>Login as Conductor</Text>
         </TouchableOpacity>
       </View>
@@ -42,7 +93,9 @@ const styles = StyleSheet.create({
   warning: { backgroundColor: 'rgba(255,165,2,.1)', borderWidth: 1, borderColor: colors.orange, borderRadius: 12, padding: 12, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   warningText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.orange },
   link: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold },
-  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.fborder, borderRadius: 12, padding: 12, color: colors.text, fontFamily: 'DMSans_400Regular', fontSize: 15, marginBottom: 8 },
+  label: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, marginBottom: 5, marginLeft: 2 },
+  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.fborder, borderRadius: 12, padding: 12, color: colors.text, fontFamily: 'DMSans_400Regular', fontSize: 15, marginBottom: 12, letterSpacing: 1 },
+  error: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.red, marginBottom: 10, marginLeft: 2 },
   btnGold: { backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
   btnGoldText: { fontFamily: 'DMSans_500Medium', fontSize: 15, color: colors.bg },
 });

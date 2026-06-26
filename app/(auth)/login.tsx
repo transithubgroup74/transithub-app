@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
+import PasswordInput from '../../components/PasswordInput';
 
 export default function Login() {
   const router = useRouter();
@@ -58,8 +59,7 @@ export default function Login() {
 
       <TextInput style={s.input} placeholder="Email address" placeholderTextColor={colors.gray}
         keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-      <TextInput style={s.input} placeholder="Password" placeholderTextColor={colors.gray}
-        secureTextEntry value={password} onChangeText={setPassword} />
+      <PasswordInput colors={colors} placeholder="Password" value={password} onChangeText={setPassword} />
 
       <TouchableOpacity style={s.forgot} onPress={() => router.push('/(auth)/forgot')}>
         <Text style={s.link}>Forgot Password?</Text>

@@ -6,6 +6,7 @@ import { auth } from '../../services/api';
 import { addNotification } from '../../utils/notifications';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
+import PasswordInput from '../../components/PasswordInput';
 
 export default function Register() {
   const router = useRouter();
@@ -21,9 +22,12 @@ export default function Register() {
 
   const capitalize = (s: string) => s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : '';
 
+  const passwordValid = password.length >= 8;
+
   const doRegister = async () => {
     if (!firstName.trim() || !surname.trim()) return Alert.alert('Error', 'First name and surname are required');
     if (!email || !password || !phone) return Alert.alert('Error', 'Please fill in all fields');
+    if (!passwordValid) return Alert.alert('Error', 'Password must be at least 8 characters');
     if (password !== confirm) return Alert.alert('Error', 'Passwords do not match');
 
     const fullName = [capitalize(firstName), capitalize(middleName), capitalize(surname)].filter(Boolean).join(' ');
@@ -64,8 +68,18 @@ export default function Register() {
       <TextInput style={styles.input} placeholder="Surname *" placeholderTextColor={colors.gray} value={surname} onChangeText={setSurname} />
       <TextInput style={styles.input} placeholder="Email address" placeholderTextColor={colors.gray} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="🇬🇭 +233 Phone Number" placeholderTextColor={colors.gray} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-      <TextInput style={styles.input} placeholder="Password" placeholderTextColor={colors.gray} secureTextEntry value={password} onChangeText={setPassword} />
-      <TextInput style={styles.input} placeholder="Confirm Password" placeholderTextColor={colors.gray} secureTextEntry value={confirm} onChangeText={setConfirm} />
+      <PasswordInput colors={colors} placeholder="Password" value={password} onChangeText={setPassword} />
+      <Text style={[styles.hint, { color: password.length === 0 ? colors.text2 : passwordValid ? colors.green : colors.orange }]}>
+        {password.length === 0
+          ? 'Use at least 8 characters'
+          : passwordValid
+            ? '✓ Password looks good'
+            : `At least 8 characters (${password.length}/8)`}
+      </Text>
+      <PasswordInput colors={colors} placeholder="Confirm Password" value={confirm} onChangeText={setConfirm} />
+      {confirm.length > 0 && confirm !== password && (
+        <Text style={[styles.hint, { color: colors.orange }]}>Passwords don't match</Text>
+      )}
 
       <TouchableOpacity style={styles.btnGold} onPress={doRegister} disabled={loading}>
         {loading ? <ActivityIndicator color={colors.bg} /> : <Text style={styles.btnGoldText}>Create Account</Text>}
@@ -91,6 +105,7 @@ const getStyles = (colors: typeof darkColors) => StyleSheet.create({
     borderRadius: 12, padding: 12, color: colors.text,
     fontFamily: 'DMSans_400Regular', fontSize: 15, marginBottom: 8,
   },
+  hint: { fontFamily: 'DMSans_400Regular', fontSize: 11, marginTop: -4, marginBottom: 8, marginLeft: 4 },
   btnGold: {
     backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 14,
     alignItems: 'center', marginBottom: 12, marginTop: 4,
