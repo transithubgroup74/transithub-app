@@ -34,10 +34,12 @@ export default function Register() {
       await AsyncStorage.setItem('token', res.data.token);
       await AsyncStorage.setItem('userEmail', email);
       await AsyncStorage.setItem('userName', fullName);
+      await AsyncStorage.setItem('userPhone', phone);
     } catch {
       await AsyncStorage.setItem('token', 'demo-token');
       await AsyncStorage.setItem('userEmail', email);
       await AsyncStorage.setItem('userName', fullName);
+      await AsyncStorage.setItem('userPhone', phone);
     } finally {
       setLoading(false);
     }

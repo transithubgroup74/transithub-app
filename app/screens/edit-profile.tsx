@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { profile as profileApi } from '../../services/api';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -50,6 +51,11 @@ export default function EditProfile() {
     ];
     if (photo) entries.push(['userPhoto', photo]);
     await AsyncStorage.multiSet(entries);
+    // Sync name + phone to the backend so they follow the user across devices.
+    // (Photo stays on-device for now — cross-device photo needs image hosting.)
+    try {
+      await profileApi.update({ name, phone });
+    } catch (_) {}
     router.back();
   };
 

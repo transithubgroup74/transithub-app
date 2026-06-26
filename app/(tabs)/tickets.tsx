@@ -28,7 +28,11 @@ export default function Tickets() {
       ]);
       const apiData = apiRes.status === 'fulfilled' ? (apiRes.value.data || []) : [];
       const localData = localRaw.status === 'fulfilled' && localRaw.value ? JSON.parse(localRaw.value) : [];
-      setMyBookings([...localData, ...apiData]);
+      // Backend is the source of truth; show local bookings only if they
+      // haven't synced yet (matched by QR), so nothing appears twice.
+      const apiQrs = new Set(apiData.map((b: any) => b.qrCode).filter(Boolean));
+      const localOnly = localData.filter((b: any) => !apiQrs.has(b.qrValue));
+      setMyBookings([...apiData, ...localOnly]);
     } catch {
       const localRaw = await AsyncStorage.getItem('localBookings').catch(() => null);
       setMyBookings(localRaw ? JSON.parse(localRaw) : []);
@@ -87,7 +91,7 @@ export default function Tickets() {
             >
               <View style={styles.ticketRow}>
                 <Text style={styles.route}>
-                  {b.schedule?.route?.origin} → {b.schedule?.route?.destination}
+                  {(b.schedule?.route?.origin || b.origin)} → {(b.schedule?.route?.destination || b.destination)}
                 </Text>
                 <View style={[styles.badge, { backgroundColor: b.status === 'confirmed' ? 'rgba(0,201,167,0.15)' : 'rgba(201,168,76,0.15)' }]}>
                   <Text style={[styles.badgeText, { color: b.status === 'confirmed' ? colors.green : colors.gold }]}>
@@ -96,7 +100,7 @@ export default function Tickets() {
                 </View>
               </View>
               <Text style={styles.meta}>
-                📅 {b.schedule?.departsAt?.slice(0, 10)}  💺 Seat {b.seatNumber}
+                📅 {(b.schedule?.departsAt?.slice(0, 10) || b.departsAt || '').toString()}  💺 Seat {b.seatNumber}
               </Text>
               <View style={styles.ticketFooter}>
                 <Text style={styles.amount}>GHS {parseFloat(b.totalAmount || 0).toFixed(2)}</Text>

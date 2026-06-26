@@ -33,11 +33,22 @@ export const schedules = {
 export const bookings = {
   create: (scheduleId: string, seatNumber: number, qrCode?: string) =>
     api.post('/bookings', { scheduleId, seatNumber, qrCode }),
+  // Full-detail booking that doesn't need a real schedule (demo/mock buses).
+  createCustom: (data: {
+    origin: string; destination: string; seatNumber: number; totalAmount: number;
+    departsAt?: string; operator?: string; busClass?: string; qrCode?: string; status?: string;
+  }) => api.post('/bookings/custom', data),
   getMine: () => api.get('/bookings/my'),
   getById: (id: string) => api.get(`/bookings/${id}`),
   getBookedSeats: (scheduleId: string) => api.get(`/bookings/seats/${scheduleId}`),
   cancel: (id: string) => api.post(`/bookings/${id}/cancel`),
   sendReceipt: (id: string) => api.post(`/bookings/${id}/receipt`),
+};
+
+export const profile = {
+  get: () => api.get('/profile'),
+  update: (data: { name?: string; phone?: string; photoUrl?: string }) =>
+    api.put('/profile', data),
 };
 
 export const payments = {

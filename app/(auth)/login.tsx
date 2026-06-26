@@ -17,12 +17,19 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await auth.login(email, password);
-      await AsyncStorage.setItem('token', res.data.token);
+      const d = res.data || {};
+      await AsyncStorage.setItem('token', d.token);
       const prevEmail = await AsyncStorage.getItem('userEmail');
       await AsyncStorage.setItem('userEmail', email);
-      if (prevEmail !== email) {
-        const name = res.data.user?.name || res.data.name || email.split('@')[0];
-        await AsyncStorage.multiSet([['userName', name], ['userPhone', ''], ['userDob', '']]);
+      // Pull this account's profile from the backend so it follows the user
+      // to any device.
+      await AsyncStorage.setItem('userName', d.name || email.split('@')[0]);
+      await AsyncStorage.setItem('userPhone', d.phone || '');
+      if (d.photoUrl) await AsyncStorage.setItem('userPhoto', d.photoUrl);
+      else await AsyncStorage.removeItem('userPhoto');
+      // Switching accounts: drop the previous user's local-only data.
+      if (prevEmail && prevEmail !== email) {
+        await AsyncStorage.multiRemove(['localBookings', 'userDob']);
       }
     } catch {
       await AsyncStorage.setItem('token', 'demo-token');

@@ -41,13 +41,29 @@ export default function Awaiting() {
       localBookings.unshift(newBooking);
       await AsyncStorage.setItem('localBookings', JSON.stringify(localBookings));
 
-      // Also create on backend if scheduleId is available (non-mock)
+      // Persist to the backend so the booking syncs across devices and the
+      // conductor can verify the QR. Real schedules use the schedule-based
+      // endpoint; demo/mock buses use the self-contained custom endpoint.
       const scheduleId = (p as any).scheduleId;
-      if (scheduleId && !scheduleId.startsWith('mock-')) {
-        try {
+      const isRealSchedule = scheduleId && !scheduleId.startsWith('mock-') &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scheduleId);
+      try {
+        if (isRealSchedule) {
           await bookingsApi.create(scheduleId, parseInt(p.seat), qrValue);
-        } catch (_) {}
-      }
+        } else {
+          await bookingsApi.createCustom({
+            origin: p.from,
+            destination: p.to,
+            seatNumber: parseInt(p.seat),
+            totalAmount: parseFloat(p.total || '0'),
+            departsAt: `${p.date} ${p.dep || ''}`.trim(),
+            operator: p.op,
+            busClass: p.busClass,
+            qrCode: qrValue,
+            status: 'confirmed',
+          });
+        }
+      } catch (_) {}
 
       return qrValue;
     } catch (_) {

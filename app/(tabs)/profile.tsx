@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { darkColors } from '../../constants/theme';
-import { bookings as bookingsApi } from '../../services/api';
+import { bookings as bookingsApi, profile as profileApi } from '../../services/api';
 
 const MENU = [
   { icon: '👤', label: 'Personal Information', route: '/screens/edit-profile' },
@@ -37,6 +37,17 @@ export default function Profile() {
     if (res[2][1]) setPhone(res[2][1]);
     if (res[4][1]) setPhoto(res[4][1]);
 
+    // Pull the authoritative profile from the backend so name/phone/photo
+    // reflect changes made on any device.
+    try {
+      const pr = await profileApi.get();
+      const d = pr.data || {};
+      if (d.name) { setName(d.name); await AsyncStorage.setItem('userName', d.name); }
+      if (d.email) { setEmail(d.email); await AsyncStorage.setItem('userEmail', d.email); }
+      if (d.phone) { setPhone(d.phone); await AsyncStorage.setItem('userPhone', d.phone); }
+      if (d.photoUrl) { setPhoto(d.photoUrl); await AsyncStorage.setItem('userPhoto', d.photoUrl); }
+    } catch (_) {}
+
     const localBookings = res[3][1] ? JSON.parse(res[3][1]) : [];
     let apiBookings: any[] = [];
     try {
@@ -44,7 +55,10 @@ export default function Profile() {
       apiBookings = apiRes.data || [];
     } catch (_) {}
 
-    const all = [...localBookings, ...apiBookings];
+    // Dedupe so a booking saved both locally and on the backend isn't counted twice.
+    const apiQrs = new Set(apiBookings.map((b: any) => b.qrCode).filter(Boolean));
+    const localOnly = localBookings.filter((b: any) => !apiQrs.has(b.qrValue));
+    const all = [...apiBookings, ...localOnly];
     setTripCount(all.length);
     const now = new Date();
     const thisMonth = all.filter((b: any) => {
