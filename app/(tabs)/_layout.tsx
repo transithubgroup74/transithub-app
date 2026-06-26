@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/theme';
 import Svg, { Path, Polyline, Circle } from 'react-native-svg';
 
@@ -29,6 +30,7 @@ const ProfileIcon = ({ color }: { color: string }) => (
 );
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
@@ -37,8 +39,8 @@ export default function TabsLayout() {
           backgroundColor: colors.card,
           borderTopColor: colors.navy,
           borderTopWidth: 1,
-          height: 72,
-          paddingBottom: 12,
+          height: 64 + insets.bottom,
+          paddingBottom: 10 + insets.bottom,
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.gold,
