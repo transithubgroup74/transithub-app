@@ -45,6 +45,9 @@ export default function Login() {
     router.replace('/(tabs)/home');
   };
 
+  const socialComingSoon = (provider: string) =>
+    Alert.alert(`${provider} sign-in`, 'Coming soon. For now, please log in with your email and password.');
+
   const s = getStyles(colors);
 
   return (
@@ -71,10 +74,10 @@ export default function Login() {
 
       <Text style={s.orText}>— or continue with —</Text>
 
-      <TouchableOpacity style={[s.btnOutline, { marginBottom: 8 }]} onPress={doLogin}>
+      <TouchableOpacity style={[s.btnOutline, { marginBottom: 8 }]} onPress={() => socialComingSoon('Google')}>
         <Text style={s.btnOutlineText}>🇬 Google</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={s.btnOutline} onPress={doLogin}>
+      <TouchableOpacity style={s.btnOutline} onPress={() => socialComingSoon('Apple')}>
         <Text style={s.btnOutlineText}> Apple</Text>
       </TouchableOpacity>
 
