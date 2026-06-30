@@ -139,16 +139,35 @@ export default function Results() {
     let list = [...rawBuses];
     // Filter out past departures when searching for today
     const now = new Date();
-    const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-    const dateLower = (date || '').toLowerCase();
+    // Robustly work out whether the searched date is today, regardless of the
+    // date string format ("Tue, 30 Jun 2026", "June 30, 2026", "2026-06-30",
+    // "30/06/2026", etc.). If we can't parse a date, assume today so past
+    // departures are still filtered out.
     const isToday = (() => {
-      // Try ISO format first
-      if (date === now.toISOString().slice(0, 10)) return true;
-      // Check day, month name, and year all appear in the date string
-      const d = now.getDate().toString();
-      const m = months[now.getMonth()];
-      const y = now.getFullYear().toString();
-      return dateLower.includes(d) && dateLower.includes(m) && dateLower.includes(y);
+      const s = String(date || '').trim();
+      if (!s) return true;
+      const ty = now.getFullYear(), tm = now.getMonth(), td = now.getDate();
+      // ISO yyyy-mm-dd
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return +iso[1] === ty && +iso[2] - 1 === tm && +iso[3] === td;
+      const low = s.toLowerCase();
+      const monthAbbr = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      let mo = -1;
+      for (let i = 0; i < 12; i++) { if (low.includes(monthAbbr[i])) { mo = i; break; } }
+      const yearM = low.match(/\b(20\d{2})\b/);
+      const year = yearM ? +yearM[1] : ty;
+      // day = first 1–2 digit number once the year is removed
+      const dayNums = (low.replace(/20\d{2}/g, '').match(/\d{1,2}/g) || []).map(Number).filter((n) => n >= 1 && n <= 31);
+      if (mo >= 0 && dayNums.length) return year === ty && mo === tm && dayNums[0] === td;
+      // numeric d/m/yyyy or m/d/yyyy
+      const num = low.match(/(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{1,4})/);
+      if (num) {
+        let a = +num[1], b = +num[2], c = +num[3], yr, mm, dd;
+        if (a > 31) { yr = a; mm = b; dd = c; } else { yr = c; mm = a; dd = b; }
+        if (mm > 12) { const t = mm; mm = dd; dd = t; }
+        return yr === ty && mm - 1 === tm && dd === td;
+      }
+      return true;
     })();
     if (isToday) {
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
