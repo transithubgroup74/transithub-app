@@ -144,32 +144,34 @@ export default function Results() {
     // date string format ("Tue, 30 Jun 2026", "June 30, 2026", "2026-06-30",
     // "30/06/2026", etc.). If we can't parse a date, assume today so past
     // departures are still filtered out.
-    const isToday = (() => {
+    const ty = now.getFullYear(), tm = now.getMonth(), td = now.getDate();
+    const todayMs = new Date(ty, tm, td).getTime();
+    // Parse the searched date to a start-of-day timestamp, handling every
+    // format the app produces. Falls back to "today" if unparseable.
+    const searchMs = (() => {
       const s = String(date || '').trim();
-      if (!s) return true;
-      const ty = now.getFullYear(), tm = now.getMonth(), td = now.getDate();
-      // ISO yyyy-mm-dd
+      if (!s) return todayMs;
       const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (iso) return +iso[1] === ty && +iso[2] - 1 === tm && +iso[3] === td;
+      if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
       const low = s.toLowerCase();
       const monthAbbr = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
       let mo = -1;
       for (let i = 0; i < 12; i++) { if (low.includes(monthAbbr[i])) { mo = i; break; } }
       const yearM = low.match(/\b(20\d{2})\b/);
       const year = yearM ? +yearM[1] : ty;
-      // day = first 1–2 digit number once the year is removed
       const dayNums = (low.replace(/20\d{2}/g, '').match(/\d{1,2}/g) || []).map(Number).filter((n) => n >= 1 && n <= 31);
-      if (mo >= 0 && dayNums.length) return year === ty && mo === tm && dayNums[0] === td;
-      // numeric d/m/yyyy or m/d/yyyy
+      if (mo >= 0 && dayNums.length) return new Date(year, mo, dayNums[0]).getTime();
       const num = low.match(/(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{1,4})/);
       if (num) {
         let a = +num[1], b = +num[2], c = +num[3], yr, mm, dd;
         if (a > 31) { yr = a; mm = b; dd = c; } else { yr = c; mm = a; dd = b; }
         if (mm > 12) { const t = mm; mm = dd; dd = t; }
-        return yr === ty && mm - 1 === tm && dd === td;
+        return new Date(yr, mm - 1, dd).getTime();
       }
-      return true;
+      return todayMs;
     })();
+    const isToday = searchMs === todayMs;
+    const isPastDate = searchMs < todayMs;
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     list = list.filter((b: any) => {
       // Backend bus with a real departure timestamp: hide if it's already in
@@ -178,8 +180,9 @@ export default function Results() {
         const dt = new Date(b.whenRaw);
         if (!isNaN(dt.getTime())) return dt.getTime() > now.getTime();
       }
-      // Demo bus (time string only): only filter when the search date is today.
-      if (!isToday) return true;
+      // Demo bus (time string only):
+      if (isPastDate) return false;  // the whole day is already gone
+      if (!isToday) return true;     // future date — every time is still valid
       let mins: number | null = null;
       const m12 = b.dep.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
       if (m12) {
