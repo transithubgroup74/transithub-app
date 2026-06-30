@@ -16,6 +16,25 @@ const POPULAR = [
   { from: 'Accra', to: 'Cape Coast', price: 50 },
 ];
 
+const todayDisplay = () => new Date().toLocaleDateString('en-GH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+// Parse any date string the app uses into a start-of-day timestamp (or null).
+function dateToDayMs(s: string): number | null {
+  const str = String(s || '').trim();
+  if (!str) return null;
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+  const low = str.toLowerCase();
+  const monthAbbr = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  let mo = -1;
+  for (let i = 0; i < 12; i++) { if (low.includes(monthAbbr[i])) { mo = i; break; } }
+  const yearM = low.match(/\b(20\d{2})\b/);
+  const year = yearM ? +yearM[1] : new Date().getFullYear();
+  const dayNums = (low.replace(/20\d{2}/g, '').match(/\d{1,2}/g) || []).map(Number).filter((n) => n >= 1 && n <= 31);
+  if (mo >= 0 && dayNums.length) return new Date(year, mo, dayNums[0]).getTime();
+  return null;
+}
+
 export default function Home() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -39,7 +58,18 @@ export default function Home() {
       const ue = await AsyncStorage.getItem('userEmail');
       if (fc) setFrom(fc);
       if (tc) setTo(tc);
-      if (sd) setDate(sd);
+      // Use the saved date, but never keep a stale past date — reset to today.
+      if (sd) {
+        const ms = dateToDayMs(sd);
+        const n = new Date();
+        const todayMs = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+        if (ms != null && ms < todayMs) {
+          await AsyncStorage.removeItem('selectedDate');
+          setDate(todayDisplay());
+        } else {
+          setDate(sd);
+        }
+      }
       if (un) setUserName(un);
       else if (ue) setUserName(ue.split('@')[0]);
       getUnreadCount().then(setUnreadCount);
