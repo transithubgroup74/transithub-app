@@ -65,7 +65,7 @@ export default function Awaiting() {
         }
       } catch (_) {}
 
-      return qrValue;
+      return { qrValue, displayId, code };
     } catch (_) {
       return undefined;
     }
@@ -85,7 +85,7 @@ export default function Awaiting() {
 
     const confirm = setTimeout(async () => {
       clearInterval(timerRef.current);
-      await saveBookingLocally();
+      const saved = await saveBookingLocally();
       await addNotification({ icon: '✅', bg: 'rgba(0,201,167,0.15)', title: 'Booking Confirmed!', msg: `Seat ${p.seat} on ${p.from}→${p.to} confirmed. Departs ${p.dep} on ${p.date}.`, time: 'Just now' });
       // Schedule push reminders for the trip
       try {
@@ -95,7 +95,12 @@ export default function Awaiting() {
           await scheduleTripReminders(p.from, p.to, departsAt, p.seat);
         }
       } catch (_) {}
-      router.replace({ pathname: '/screens/confirmed', params: p });
+      // Pass the EXACT saved QR so the ticket shows the same code that was
+      // stored on the backend — otherwise the conductor scan won't match.
+      router.replace({
+        pathname: '/screens/confirmed',
+        params: { ...p, qrValue: saved?.qrValue, displayId: saved?.displayId, code: saved?.code },
+      });
     }, 3000);
 
     return () => { clearInterval(timerRef.current); clearTimeout(confirm); };
