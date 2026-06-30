@@ -61,6 +61,35 @@ function depHour(dep: string) {
   if (match[3].toUpperCase() === 'AM' && h === 12) h = 0;
   return h;
 }
+// Convert any date string the app produces ("Tue, 30 Jun 2026", "June 30, 2026",
+// "2026-06-30", "30/06/2026"...) to ISO "YYYY-MM-DD" for the backend search,
+// which expects LocalDate.parse format. Falls back to today.
+function toISODate(input: string) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const today = () => new Date().toISOString().slice(0, 10);
+  const s = String(input || '').trim();
+  if (!s) return today();
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const low = s.toLowerCase();
+  const monthAbbr = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  let mo = -1;
+  for (let i = 0; i < 12; i++) { if (low.includes(monthAbbr[i])) { mo = i; break; } }
+  const yearM = low.match(/\b(20\d{2})\b/);
+  const year = yearM ? +yearM[1] : new Date().getFullYear();
+  const dayNums = (low.replace(/20\d{2}/g, '').match(/\d{1,2}/g) || []).map(Number).filter((n) => n >= 1 && n <= 31);
+  if (mo >= 0 && dayNums.length) return `${year}-${pad(mo + 1)}-${pad(dayNums[0])}`;
+  const num = low.match(/(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{1,4})/);
+  if (num) {
+    let a = +num[1], b = +num[2], c = +num[3], yr, mm, dd;
+    if (a > 31) { yr = a; mm = b; dd = c; } else { yr = c; mm = a; dd = b; }
+    if (mm > 12) { const t = mm; mm = dd; dd = t; }
+    return `${yr}-${pad(mm)}-${pad(dd)}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return today();
+}
 
 const COLORS = ['#DC2626', '#2563EB', '#7C3AED', '#0891B2', '#C9A84C', '#16A34A', '#D97706', '#9333EA'];
 
@@ -70,7 +99,6 @@ export default function Results() {
   const [tab, setTab] = useState<'Regular' | 'Executive'>((initClass as any) || 'Regular');
   const [allSchedules, setAllSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   // Filter state
@@ -84,18 +112,14 @@ export default function Results() {
   const loadSchedules = async () => {
     setLoading(true);
     try {
+      const iso = toISODate(date || '');
       const res2 = await fetch(
-        `https://transithub-backend-production.up.railway.app/api/schedules/search?origin=${encodeURIComponent(from || '')}&destination=${encodeURIComponent(to || '')}&date=${date || new Date().toISOString().slice(0, 10)}`
+        `https://transithub-backend-production.up.railway.app/api/schedules/search?origin=${encodeURIComponent(from || '')}&destination=${encodeURIComponent(to || '')}&date=${iso}`
       );
       const data = await res2.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setAllSchedules(data);
-        setUsingMock(false);
-      } else {
-        setUsingMock(true);
-      }
+      setAllSchedules(Array.isArray(data) ? data : []);
     } catch {
-      setUsingMock(true);
+      setAllSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -116,12 +140,15 @@ export default function Results() {
     whenRaw: s.departsAt,
   });
 
+  // Schedules created from the admin dashboard (source = "admin") are shown on
+  // top of the demo marketplace so dashboard additions appear live in the app.
+  // Seeded schedules are left out to keep the curated demo listings intact.
+  const adminCards = allSchedules
+    .filter((s: any) => String(s.source || '').toLowerCase() === 'admin')
+    .map((s: any, i: number) => ({ ...toCard(s, i), type: 'Standard Coach' }));
+
   const isExec = tab === 'Executive';
-  const rawBuses = usingMock
-    ? (isExec ? MOCK_EXEC : MOCK_REG)
-    : (isExec
-        ? allSchedules.map(toCard).filter((_: any, i: number) => i % 3 === 0).map((b: any) => ({ ...b, price: b.price * 1.8, type: 'Executive Coach' }))
-        : allSchedules.map(toCard));
+  const rawBuses = isExec ? MOCK_EXEC : [...adminCards, ...MOCK_REG];
 
   // Unique operators for filter
   const operators = useMemo(() => [...new Set(rawBuses.map((b: any) => b.op))], [rawBuses]);
@@ -207,6 +234,10 @@ export default function Results() {
     return list;
   }, [rawBuses, timeSlot, selectedOp, maxPrice, sortBy, date]);
 
+  // Visible schedules that came from the backend (admin-added) — only these
+  // carry whenRaw. Used to show a subtle "new" hint in the header.
+  const liveCount = displayBuses.filter((b: any) => b.whenRaw).length;
+
   const activeFilters = [timeSlot !== null, selectedOp !== null, maxPrice !== null].filter(Boolean).length;
 
   const clearFilters = () => { setTimeSlot(null); setSelectedOp(null); setMaxPrice(null); setSortBy('time'); };
@@ -218,7 +249,7 @@ export default function Results() {
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{from} → {to}</Text>
-            <Text style={styles.subtitle}>{date}{usingMock ? ' · Demo mode' : ''}</Text>
+            <Text style={styles.subtitle}>{date}{liveCount ? ` · ${liveCount} new` : ''}</Text>
           </View>
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.link}>Change</Text></TouchableOpacity>
         </View>
