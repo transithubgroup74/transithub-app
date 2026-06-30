@@ -113,6 +113,7 @@ export default function Results() {
     abbr: getAbbr(s.route?.operator?.companyName || 'TH'),
     type: s.bus?.model || 'Standard Coach',
     scheduleId: s.id,
+    whenRaw: s.departsAt,
   });
 
   const isExec = tab === 'Executive';
@@ -169,18 +170,30 @@ export default function Results() {
       }
       return true;
     })();
-    if (isToday) {
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      list = list.filter((b: any) => {
-        const match = b.dep.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (!match) return true;
-        let h = parseInt(match[1]);
-        const m = parseInt(match[2]);
-        if (match[3].toUpperCase() === 'PM' && h !== 12) h += 12;
-        if (match[3].toUpperCase() === 'AM' && h === 12) h = 0;
-        return h * 60 + m > nowMinutes;
-      });
-    }
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    list = list.filter((b: any) => {
+      // Backend bus with a real departure timestamp: hide if it's already in
+      // the past (handles any day correctly, no string parsing needed).
+      if (b.whenRaw) {
+        const dt = new Date(b.whenRaw);
+        if (!isNaN(dt.getTime())) return dt.getTime() > now.getTime();
+      }
+      // Demo bus (time string only): only filter when the search date is today.
+      if (!isToday) return true;
+      let mins: number | null = null;
+      const m12 = b.dep.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (m12) {
+        let h = parseInt(m12[1]); const mn = parseInt(m12[2]);
+        if (/pm/i.test(m12[3]) && h !== 12) h += 12;
+        if (/am/i.test(m12[3]) && h === 12) h = 0;
+        mins = h * 60 + mn;
+      } else {
+        const m24 = b.dep.match(/(\d{1,2}):(\d{2})/); // 24-hour fallback
+        if (m24) mins = parseInt(m24[1]) * 60 + parseInt(m24[2]);
+      }
+      if (mins == null) return true;
+      return mins > nowMinutes;
+    });
     if (timeSlot !== null) {
       const slot = TIME_SLOTS[timeSlot];
       list = list.filter((b: any) => { const h = depHour(b.dep); return h >= slot.from && h < slot.to; });
