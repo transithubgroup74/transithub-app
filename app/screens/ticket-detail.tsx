@@ -173,7 +173,7 @@ export default function TicketDetail() {
           <View style={styles.divider} />
           <View style={styles.qrBox}>
             <QRCode
-              value={`TRANSITHUB|${booking.id}|${origin}|${dest}|${date}|${dep}|SEAT:${booking.seatNumber}|THB-${ref}`}
+              value={booking.qrValue || booking.qrCode || `TRANSITHUB|${booking.id}|${origin}|${dest}|${date}|${dep}|SEAT:${booking.seatNumber}|THB-${ref}`}
               size={120}
               color="#1B3A6B"
               backgroundColor="#ffffff"

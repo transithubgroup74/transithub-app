@@ -14,9 +14,12 @@ export default function Confirmed() {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const [sendingReceipt, setSendingReceipt] = useState(false);
-  const p = useLocalSearchParams<{ from: string; to: string; date: string; op: string; dep: string; arr: string; seat: string; total: string; busClass: string }>();
-  const bookingId = 'THB' + Date.now().toString().slice(-8);
-  const code = `THB-2025-${(p.from || '').substring(0, 3).toUpperCase()}-${(p.to || '').substring(0, 3).toUpperCase()}-${String(p.seat).padStart(4, '0')}`;
+  const p = useLocalSearchParams<{ from: string; to: string; date: string; op: string; dep: string; arr: string; seat: string; total: string; busClass: string; qrValue?: string; displayId?: string; code?: string }>();
+  // Use the SAME id/code/QR that was saved to the backend (passed from the
+  // booking step), so the QR shown here matches what the conductor verifies.
+  const bookingId = p.displayId || ('THB' + Date.now().toString().slice(-8));
+  const code = p.code || `THB-2025-${(p.from || '').substring(0, 3).toUpperCase()}-${(p.to || '').substring(0, 3).toUpperCase()}-${String(p.seat).padStart(4, '0')}`;
+  const qrValue = p.qrValue || `TRANSITHUB|${bookingId}|${p.from}|${p.to}|${p.date}|${p.dep}|SEAT:${p.seat}|${code}`;
 
   const ticketText = `━━━━━━━━━━━━━━━━━━━━━━
 🚌 TRANSITHUB TICKET
@@ -103,7 +106,7 @@ Show this at the station gate.
           <View style={styles.divider} />
           <View style={styles.qrBox}>
             <QRCode
-              value={`TRANSITHUB|${bookingId}|${p.from}|${p.to}|${p.date}|${p.dep}|SEAT:${p.seat}|${code}`}
+              value={qrValue}
               size={120}
               color="#1B3A6B"
               backgroundColor="#ffffff"
