@@ -77,6 +77,12 @@ export default function Payment() {
 
   const processPayment = async () => {
     if (!selected) return Alert.alert('Select a payment method');
+    if (!isMomo && !isCard) {
+      // Paystack Ghana doesn't support the direct-bank channel (Nigeria-only),
+      // so bank payments can't start a transaction. Show as coming soon.
+      const bank = BANKS.find(b => b.id === selected)?.label || 'Bank';
+      return Alert.alert('Coming soon', `${bank} payments are coming soon. Please use Mobile Money or a card for now.`);
+    }
     if (isMomo) {
       const label = selected === 'mtn' ? 'MTN MoMo' : selected === 'telecel' ? 'Telecel Cash' : 'AirtelTigo Money';
       const num = normalizeGhanaNumber(momoNum);
