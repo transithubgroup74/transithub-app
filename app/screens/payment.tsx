@@ -26,6 +26,38 @@ const BANKS = [
   { id: 'nib', label: 'NIB' }, { id: 'prudential', label: 'Prudential Bank' },
 ];
 
+// Ghana mobile prefixes per network — used to catch wrong-network numbers.
+const MOMO_PREFIXES: Record<string, string[]> = {
+  mtn: ['024', '025', '053', '054', '055', '059'],
+  telecel: ['020', '050'],
+  airteltigo: ['026', '027', '056', '057'],
+};
+
+// Accepts 024..., +233 24..., 233 24... and normalizes to 0XXXXXXXXX.
+const normalizeGhanaNumber = (raw: string) => {
+  let n = (raw || '').replace(/[^\d+]/g, '');
+  if (n.startsWith('+233')) n = '0' + n.slice(4);
+  else if (n.startsWith('233')) n = '0' + n.slice(3);
+  return n;
+};
+
+// Luhn checksum — catches mistyped card numbers.
+const luhnValid = (num: string) => {
+  let sum = 0, dbl = false;
+  for (let i = num.length - 1; i >= 0; i--) {
+    let d = parseInt(num[i], 10);
+    if (dbl) { d *= 2; if (d > 9) d -= 9; }
+    sum += d; dbl = !dbl;
+  }
+  return sum % 10 === 0;
+};
+
+const cardBrand = (digits: string) => {
+  if (/^4/.test(digits)) return 'visa';
+  if (/^(5[1-5]|2[2-7])/.test(digits)) return 'mastercard';
+  return null;
+};
+
 export default function Payment() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -45,8 +77,38 @@ export default function Payment() {
 
   const processPayment = async () => {
     if (!selected) return Alert.alert('Select a payment method');
-    if (isMomo && !momoNum) return Alert.alert('Enter your MoMo number');
-    if (isCard && !cardNum) return Alert.alert('Enter card number');
+    if (isMomo) {
+      const label = selected === 'mtn' ? 'MTN MoMo' : selected === 'telecel' ? 'Telecel Cash' : 'AirtelTigo Money';
+      const num = normalizeGhanaNumber(momoNum);
+      if (!num) return Alert.alert('Enter your MoMo number');
+      if (!/^0\d{9}$/.test(num)) return Alert.alert('Invalid number', 'Enter a valid 10-digit Ghana number, e.g. 024 123 4567.');
+      const prefixes = MOMO_PREFIXES[selected] || [];
+      if (!prefixes.includes(num.slice(0, 3))) {
+        return Alert.alert(`Not a ${label} number`, `${label} numbers start with ${prefixes.join(', ')}. Check the number or switch networks.`);
+      }
+    }
+    if (isCard) {
+      const digits = cardNum.replace(/\D/g, '');
+      if (!digits) return Alert.alert('Enter card number');
+      const brand = cardBrand(digits);
+      if (digits.length < 13 || digits.length > 19 || !brand || !luhnValid(digits)) {
+        return Alert.alert('Invalid card number', 'Check the card number and try again.');
+      }
+      if (brand !== selected) {
+        const brandLabel = brand === 'visa' ? 'Visa' : 'Mastercard';
+        return Alert.alert(`Not a ${selected === 'visa' ? 'Visa' : 'Mastercard'} card`, `This looks like a ${brandLabel} number — select ${brandLabel} instead.`);
+      }
+      const exp = cardExp.trim().replace(/\s/g, '');
+      const expMatch = exp.match(/^(0[1-9]|1[0-2])\/?(\d{2})$/);
+      if (!expMatch) return Alert.alert('Invalid expiry', 'Enter the expiry as MM/YY.');
+      const expYear = 2000 + parseInt(expMatch[2], 10);
+      const expMonth = parseInt(expMatch[1], 10);
+      const now = new Date();
+      if (expYear < now.getFullYear() || (expYear === now.getFullYear() && expMonth < now.getMonth() + 1)) {
+        return Alert.alert('Card expired', 'This card\'s expiry date has passed.');
+      }
+      if (!/^\d{3,4}$/.test(cardCvv.trim())) return Alert.alert('Invalid CVV', 'Enter the 3-digit code on the back of the card.');
+    }
     setLoading(true);
     const email = await AsyncStorage.getItem('userEmail') || 'passenger@transithub.com';
     setUserEmail(email);
