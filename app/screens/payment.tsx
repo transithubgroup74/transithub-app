@@ -13,7 +13,7 @@ const PAYSTACK_PUBLIC_KEY = 'pk_test_ce7e4e8adb4bef6510fbe1fb7bf04d52b2f7c001';
 // works (Paystack test mode only accepts its one designated test number).
 // Cards still open the real Paystack test checkout. Set to false to send
 // MoMo/banks back through the Paystack window.
-const SIMULATE_MOMO_AND_BANKS = true;
+const SIMULATE_MOMO_AND_BANKS = false;
 
 const MOMO = [
   { id: 'mtn', label: 'MTN', sub: 'MoMo', color: '#FFCC00' },
