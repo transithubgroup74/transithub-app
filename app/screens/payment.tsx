@@ -9,6 +9,12 @@ import { WebView } from 'react-native-webview';
 
 const PAYSTACK_PUBLIC_KEY = 'pk_test_ce7e4e8adb4bef6510fbe1fb7bf04d52b2f7c001';
 
+// DEMO MODE: MoMo + bank payments are simulated in-app so ANY phone number
+// works (Paystack test mode only accepts its one designated test number).
+// Cards still open the real Paystack test checkout. Set to false to send
+// MoMo/banks back through the Paystack window.
+const SIMULATE_MOMO_AND_BANKS = true;
+
 const MOMO = [
   { id: 'mtn', label: 'MTN', sub: 'MoMo', color: '#FFCC00' },
   { id: 'telecel', label: 'Telecel', sub: 'Cash', color: '#E53E3E' },
@@ -39,6 +45,8 @@ export default function Payment() {
   const [loading, setLoading] = useState(false);
   const [showPaystack, setShowPaystack] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [simulating, setSimulating] = useState(false);
+  const [simApproved, setSimApproved] = useState(false);
 
   const isMomo = ['mtn', 'telecel', 'airteltigo'].includes(selected);
   const isCard = ['visa', 'mastercard'].includes(selected);
@@ -51,6 +59,13 @@ export default function Payment() {
     const email = await AsyncStorage.getItem('userEmail') || 'passenger@transithub.com';
     setUserEmail(email);
     setLoading(false);
+    if (SIMULATE_MOMO_AND_BANKS && !isCard) {
+      // Simulated approval: prompt-sent → approved → awaiting (books as usual).
+      setSimulating(true);
+      setTimeout(() => setSimApproved(true), 3000);
+      setTimeout(() => router.replace({ pathname: '/screens/awaiting', params: p }), 4600);
+      return;
+    }
     setShowPaystack(true);
   };
 
@@ -90,6 +105,39 @@ export default function Payment() {
       }
     } catch {}
   };
+
+  if (simulating) {
+    const isBank = !isMomo && !isCard;
+    const methodName = isMomo
+      ? (selected === 'mtn' ? 'MTN MoMo' : selected === 'telecel' ? 'Telecel Cash' : 'AirtelTigo Money')
+      : (BANKS.find(b => b.id === selected)?.label || 'Bank');
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        {!simApproved ? (
+          <>
+            <Text style={{ fontSize: 44, marginBottom: 16 }}>📱</Text>
+            <Text style={{ fontFamily: 'DMSans_500Medium', fontSize: 17, color: colors.text, marginBottom: 6, textAlign: 'center' }}>
+              {isBank ? `Connecting to ${methodName}…` : 'Payment prompt sent'}
+            </Text>
+            {!isBank && (
+              <Text style={{ fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.gold, marginBottom: 6 }}>{momoNum}</Text>
+            )}
+            <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2, marginBottom: 26, textAlign: 'center' }}>
+              {isBank ? 'Authorising payment with your bank' : `Approve the ${methodName} prompt on your phone`}
+            </Text>
+            <ActivityIndicator color={colors.gold} size="large" />
+            <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.gold, marginTop: 14 }}>Awaiting approval…</Text>
+          </>
+        ) : (
+          <>
+            <Text style={{ fontSize: 44, marginBottom: 16 }}>✅</Text>
+            <Text style={{ fontFamily: 'DMSans_500Medium', fontSize: 17, color: colors.text, marginBottom: 6 }}>Payment approved</Text>
+            <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.text2 }}>GHS {p.total} · {methodName}</Text>
+          </>
+        )}
+      </SafeAreaView>
+    );
+  }
 
   if (showPaystack) {
     return (
