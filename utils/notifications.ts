@@ -12,6 +12,46 @@ export type AppNotification = {
 };
 
 const KEY = 'userNotifications';
+const API = 'https://transithub-backend-production.up.railway.app/api';
+
+// Icon + tint per alert type sent from the admin dashboard.
+function alertStyle(type?: string): { icon: string; bg: string } {
+  const t = String(type || '');
+  if (t.includes('Delay')) return { icon: '⚠️', bg: 'rgba(255,159,67,0.15)' };
+  if (t.includes('Cancellation')) return { icon: '❌', bg: 'rgba(255,71,87,0.15)' };
+  if (t.includes('Reminder')) return { icon: '✅', bg: 'rgba(0,201,167,0.15)' };
+  if (t.includes('Promotion')) return { icon: '🎉', bg: 'rgba(155,89,182,0.15)' };
+  return { icon: '📢', bg: 'rgba(201,168,76,0.15)' };
+}
+
+// Pulls broadcast alerts sent from the admin dashboard and merges any new
+// ones into the local notification list (deduped by server id).
+export async function syncServerAlerts(): Promise<void> {
+  try {
+    const res = await fetch(API + '/alerts');
+    if (!res.ok) return;
+    const alerts = await res.json();
+    if (!Array.isArray(alerts) || !alerts.length) return;
+    const existing = await getNotifications();
+    const have = new Set(existing.map((n) => n.id));
+    const fresh: AppNotification[] = alerts
+      .filter((a: any) => a && a.id && !have.has('srv-' + a.id))
+      .map((a: any) => ({
+        id: 'srv-' + a.id,
+        ...alertStyle(a.type),
+        title: a.title || 'TransitHub',
+        msg: a.message || '',
+        time: '',
+        createdAt: a.createdAt || new Date().toISOString(),
+        read: false,
+      }));
+    if (!fresh.length) return;
+    const merged = [...fresh, ...existing].sort(
+      (x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime()
+    );
+    await AsyncStorage.setItem(KEY, JSON.stringify(merged));
+  } catch {}
+}
 
 export async function getNotifications(): Promise<AppNotification[]> {
   try {

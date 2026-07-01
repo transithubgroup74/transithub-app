@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getNotifications, markAllRead, formatTime, AppNotification } from '../../utils/notifications';
+import { getNotifications, markAllRead, formatTime, syncServerAlerts, AppNotification } from '../../utils/notifications';
 
 export default function Notifications() {
   const { colors } = useTheme();
@@ -11,7 +11,9 @@ export default function Notifications() {
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
 
   useFocusEffect(useCallback(() => {
+    // Show what we have instantly, then pull any new dashboard alerts.
     getNotifications().then(setNotifs);
+    syncServerAlerts().then(() => getNotifications().then(setNotifs));
   }, []));
 
   const handleMarkAllRead = async () => {

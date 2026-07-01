@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getUnreadCount } from '../../utils/notifications';
+import { getUnreadCount, syncServerAlerts } from '../../utils/notifications';
 import { getRecentSearches, clearRecentSearches, RecentSearch } from '../../utils/recentSearches';
 import { getSavedRoutes, saveRoute, removeRoute, SavedRoute } from '../../utils/savedRoutes';
 
@@ -73,6 +73,8 @@ export default function Home() {
       if (un) setUserName(un);
       else if (ue) setUserName(ue.split('@')[0]);
       getUnreadCount().then(setUnreadCount);
+      // Pull any new dashboard alerts so the bell badge updates on open.
+      syncServerAlerts().then(() => getUnreadCount()).then(setUnreadCount);
       getRecentSearches().then(setRecentSearches);
       getSavedRoutes().then(setSavedRoutes);
     };
