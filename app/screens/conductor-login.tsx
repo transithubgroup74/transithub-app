@@ -49,8 +49,10 @@ export default function ConductorLogin() {
           <Text style={styles.title}>Conductor Login</Text>
           <Text style={styles.sub}>For station staff only</Text>
           <View style={styles.warning}>
-            <Text style={styles.warningText}>⚠️ This login is for conductors only. </Text>
-            <TouchableOpacity onPress={() => router.back()}><Text style={styles.link}>Passengers tap here.</Text></TouchableOpacity>
+            <Text style={styles.warningText}>⚠️ This login is for conductors only.</Text>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}>
+              <Text style={styles.link}>Passengers tap here</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -90,9 +92,9 @@ const styles = StyleSheet.create({
   busIcon: { fontSize: 48, marginBottom: 10 },
   title: { fontFamily: 'DMSans_500Medium', fontSize: 20, color: colors.text, marginBottom: 4 },
   sub: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: colors.gold, marginBottom: 14 },
-  warning: { backgroundColor: 'rgba(255,165,2,.1)', borderWidth: 1, borderColor: colors.orange, borderRadius: 12, padding: 12, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
-  warningText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.orange },
-  link: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold },
+  warning: { backgroundColor: 'rgba(255,165,2,.1)', borderWidth: 1, borderColor: colors.orange, borderRadius: 12, padding: 12, alignItems: 'center' },
+  warningText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.orange, textAlign: 'center' },
+  link: { fontFamily: 'DMSans_500Medium', fontSize: 12, color: colors.gold, marginTop: 6, textDecorationLine: 'underline' },
   label: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.text2, marginBottom: 5, marginLeft: 2 },
   input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.fborder, borderRadius: 12, padding: 12, color: colors.text, fontFamily: 'DMSans_400Regular', fontSize: 15, marginBottom: 12, letterSpacing: 1 },
   error: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.red, marginBottom: 10, marginLeft: 2 },
