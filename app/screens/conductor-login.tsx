@@ -57,7 +57,7 @@ export default function ConductorLogin() {
         <Text style={styles.label}>Staff ID</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. VIP-CN-04"
+          placeholder="Enter your Staff ID"
           placeholderTextColor={colors.gray}
           autoCapitalize="characters"
           autoCorrect={false}
