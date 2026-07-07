@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../services/api';
@@ -55,12 +55,12 @@ export default function Register() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>←</Text>
-        </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.back()} style={{ alignSelf: 'flex-start' }}>
+        <Text style={styles.back}>←</Text>
+      </TouchableOpacity>
+      <View style={styles.brand}>
+        <Image source={require('../../assets/icon.png')} style={styles.logo} />
         <Text style={styles.title}>Create Account</Text>
-        <View style={{ width: 28 }} />
       </View>
 
       <TextInput style={styles.input} placeholder="First Name *" placeholderTextColor={colors.gray} value={firstName} onChangeText={setFirstName} />
@@ -99,7 +99,9 @@ const getStyles = (colors: typeof darkColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: 16, paddingTop: 56 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   back: { fontSize: 22, color: colors.gold, padding: 4 },
-  title: { flex: 1, textAlign: 'center', fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text },
+  brand: { alignItems: 'center', marginTop: 6, marginBottom: 22 },
+  logo: { width: 72, height: 72, borderRadius: 17 },
+  title: { fontFamily: 'DMSans_500Medium', fontSize: 18, color: colors.text, marginTop: 10 },
   input: {
     backgroundColor: colors.field, borderWidth: 1, borderColor: colors.fborder,
     borderRadius: 12, padding: 12, color: colors.text,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../services/api';
@@ -52,12 +52,12 @@ export default function Login() {
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={s.back}>←</Text>
-        </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.back()} style={{ alignSelf: 'flex-start' }}>
+        <Text style={s.back}>←</Text>
+      </TouchableOpacity>
+      <View style={s.brand}>
+        <Image source={require('../../assets/icon.png')} style={s.logo} />
         <Text style={s.title}>Welcome Back</Text>
-        <View style={{ width: 28 }} />
       </View>
 
       <TextInput style={s.input} placeholder="Email address" placeholderTextColor={colors.gray}
@@ -98,7 +98,9 @@ const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: 16, paddingTop: 56 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   back: { fontSize: 22, color: colors.gold, padding: 4 },
-  title: { flex: 1, textAlign: 'center', fontFamily: 'DMSans_500Medium', fontSize: 16, color: colors.text },
+  brand: { alignItems: 'center', marginTop: 6, marginBottom: 26 },
+  logo: { width: 76, height: 76, borderRadius: 18 },
+  title: { fontFamily: 'DMSans_500Medium', fontSize: 18, color: colors.text, marginTop: 10 },
   input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.fborder, borderRadius: 12, padding: 12, color: colors.text, fontFamily: 'DMSans_400Regular', fontSize: 15, marginBottom: 8 },
   forgot: { alignItems: 'flex-end', marginBottom: 20 },
   link: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: colors.gold },
