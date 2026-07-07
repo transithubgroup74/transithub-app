@@ -20,7 +20,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#020E1A"
+        "backgroundColor": "#000F1E"
       },
       "package": "com.transithub.app",
       "predictiveBackGestureEnabled": false
