@@ -2,9 +2,23 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PasswordInput from '../../components/PasswordInput';
+
+// TransitHub shield mark (staff credential icon)
+function ShieldBus() {
+  return (
+    <Svg width={56} height={56} viewBox="0 0 72 72" style={{ marginBottom: 10 }}>
+      <Path d="M36 7 L59 16 V34 C59 50 36 65 36 65 C36 65 13 50 13 34 V16 Z" fill="none" stroke={colors.gold} strokeWidth={3} />
+      <Rect x={26} y={26} width={20} height={16} rx={3.5} fill={colors.gold} />
+      <Rect x={29} y={29} width={14} height={5.5} rx={1.5} fill={colors.bg} />
+      <Circle cx={30} cy={39} r={1.8} fill={colors.bg} />
+      <Circle cx={42} cy={39} r={1.8} fill={colors.bg} />
+    </Svg>
+  );
+}
 
 // Approved conductor accounts (mirrors the staff list in the admin dashboard).
 // NOTE: these live in the app for now; full server-side staff auth is part of
@@ -45,7 +59,7 @@ export default function ConductorLogin() {
       <View style={{ padding: 16 }}>
         <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
         <View style={styles.center}>
-          <Text style={styles.busIcon}>🚌</Text>
+          <ShieldBus />
           <Text style={styles.title}>Conductor Login</Text>
           <Text style={styles.sub}>For station staff only</Text>
           <View style={styles.warning}>
