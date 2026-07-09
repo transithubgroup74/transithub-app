@@ -3,7 +3,7 @@ import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/theme';
-import Svg, { Circle, Rect } from 'react-native-svg';
+import Svg, { Circle, Rect, Path } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -118,23 +118,15 @@ export default function Splash() {
             />
           </Svg>
 
-          {/* gold mark with bus */}
+          {/* new pin + bus mark */}
           <Animated.View style={{ opacity: markOpacity, transform: [{ scale: markScale }] }}>
-            <View style={styles.badge}>
-              <Svg width={120} height={120} viewBox="0 0 120 120">
-                <Circle cx={60} cy={48} r={9} fill={colors.bg} />
-                <Rect x={32} y={58} width={56} height={30} rx={6} fill={colors.bg} />
-                <Rect x={37} y={63} width={11} height={9} rx={2} fill={colors.gold} />
-                <Rect x={50} y={63} width={11} height={9} rx={2} fill={colors.gold} />
-                <Rect x={63} y={63} width={11} height={9} rx={2} fill={colors.gold} />
-                <Rect x={77} y={68} width={6} height={9} rx={1} fill={colors.gold} />
-                <Circle cx={44} cy={90} r={5} fill={colors.gold} />
-                <Circle cx={76} cy={90} r={5} fill={colors.gold} />
-              </Svg>
-
-              {/* shimmer sweep */}
-              <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerX }, { skewX: '-20deg' }] }]} />
-            </View>
+            <Svg width={124} height={124} viewBox="0 0 72 72">
+              <Path d="M36 8 C22 8 12 19 12 32 C12 50 36 66 36 66 C36 66 60 50 60 32 C60 19 50 8 36 8 Z" fill={colors.gold} />
+              <Rect x={26} y={22} width={20} height={17} rx={4} fill={colors.bg} />
+              <Rect x={29} y={25} width={14} height={6} rx={1.5} fill={colors.gold} />
+              <Circle cx={30} cy={35} r={1.9} fill={colors.gold} />
+              <Circle cx={42} cy={35} r={1.9} fill={colors.gold} />
+            </Svg>
           </Animated.View>
         </View>
 
