@@ -21,7 +21,7 @@ function AppStack() {
       router.push('/(tabs)/tickets');
     });
     return () => {
-      if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+      if (responseListener.current) responseListener.current.remove();
     };
   }, []);
 

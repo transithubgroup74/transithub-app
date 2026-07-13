@@ -60,11 +60,11 @@ export default function Calendar() {
             {cells.slice(w * 7, w * 7 + 7).map((d, i) => (
               <TouchableOpacity
                 key={i}
-                style={[styles.cell, d && selected === d && styles.cellSelected, d && isPast(d) && { opacity: 0.25 }]}
+                style={[styles.cell, !!d && selected === d && styles.cellSelected, !!d && isPast(d) && { opacity: 0.25 }]}
                 onPress={() => d && !isPast(d) && setSelected(d)}
                 disabled={!d || isPast(d)}
               >
-                <Text style={[styles.cellText, d && selected === d && styles.cellTextSelected]}>
+                <Text style={[styles.cellText, !!d && selected === d && styles.cellTextSelected]}>
                   {d ?? ''}
                 </Text>
               </TouchableOpacity>
