@@ -3,11 +3,20 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Convenience fee bands from the project proposal (§6.1): GHS 2 up to 50,
+// 3 up to 100, 4–5 up to 200, and 5–10 above that.
+const convenienceFee = (fare: number) => {
+  if (fare <= 50) return 2;
+  if (fare <= 100) return 3;
+  if (fare <= 200) return 5;
+  return 8;
+};
+
 export default function Summary() {
   const router = useRouter();
   const p = useLocalSearchParams<{ from: string; to: string; date: string; op: string; dep: string; arr: string; price: string; seat: string; scheduleId: string; busClass: string }>();
   const base = parseFloat(p.price || '0');
-  const fee = 3;
+  const fee = convenienceFee(base);
   const total = base + fee;
 
   return (
