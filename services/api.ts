@@ -16,10 +16,6 @@ export const auth = {
     api.post('/auth/register', data),
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
-  verify: (email: string, code: string) =>
-    api.post('/auth/verify', { email, code }),
-  resendCode: (email: string) =>
-    api.post('/auth/resend-code', { email }),
 };
 
 /**
@@ -31,8 +27,6 @@ export const errorMessage = (e: any, fallback: string): string => {
   if (e?.response) return e.response.data?.message || fallback;
   return "Couldn't reach TransitHub. Check your internet connection and try again.";
 };
-
-export const errorCode = (e: any): string | null => e?.response?.data?.code ?? null;
 
 export const routes = {
   getAll: () => api.get('/routes'),

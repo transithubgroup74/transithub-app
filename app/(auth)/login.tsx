@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, errorCode, errorMessage } from '../../services/api';
+import { auth, errorMessage } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import PasswordInput from '../../components/PasswordInput';
 
@@ -36,17 +36,7 @@ export default function Login() {
       // Only navigate once the server has actually accepted the credentials.
       router.replace('/(tabs)/home');
     } catch (e: any) {
-      if (errorCode(e) === 'email_unverified') {
-        Alert.alert('Verify your email', 'Confirm your email address to finish setting up your account.', [
-          { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Verify now',
-            onPress: () => router.push({ pathname: '/(auth)/verify', params: { email: email.trim().toLowerCase() } } as any),
-          },
-        ]);
-      } else {
-        Alert.alert('Login failed', errorMessage(e, 'Incorrect email or password.'));
-      }
+      Alert.alert('Login failed', errorMessage(e, 'Incorrect email or password.'));
     } finally {
       setLoading(false);
     }
