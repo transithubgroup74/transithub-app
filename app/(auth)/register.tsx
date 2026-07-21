@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../../services/api';
-import { addNotification } from '../../utils/notifications';
+import { auth, errorMessage } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 import PasswordInput from '../../components/PasswordInput';
@@ -23,32 +21,32 @@ export default function Register() {
   const capitalize = (s: string) => s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : '';
 
   const passwordValid = password.length >= 8;
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
   const doRegister = async () => {
     if (!firstName.trim() || !surname.trim()) return Alert.alert('Error', 'First name and surname are required');
     if (!email || !password || !phone) return Alert.alert('Error', 'Please fill in all fields');
+    if (!emailValid) return Alert.alert('Error', 'Please enter a valid email address');
     if (!passwordValid) return Alert.alert('Error', 'Password must be at least 8 characters');
     if (password !== confirm) return Alert.alert('Error', 'Passwords do not match');
 
     const fullName = [capitalize(firstName), capitalize(middleName), capitalize(surname)].filter(Boolean).join(' ');
+    const account = email.trim().toLowerCase();
 
     setLoading(true);
     try {
-      const res = await auth.register({ name: fullName, email, password, phone });
-      await AsyncStorage.setItem('token', res.data.token);
-      await AsyncStorage.setItem('userEmail', email);
-      await AsyncStorage.setItem('userName', fullName);
-      await AsyncStorage.setItem('userPhone', phone);
-    } catch {
-      await AsyncStorage.setItem('token', 'demo-token');
-      await AsyncStorage.setItem('userEmail', email);
-      await AsyncStorage.setItem('userName', fullName);
-      await AsyncStorage.setItem('userPhone', phone);
+      // The account starts out unverified and no token is issued yet — it is
+      // handed over on the verify screen once they enter the emailed code.
+      await auth.register({ name: fullName, email: account, password, phone });
+      router.push({
+        pathname: '/(auth)/verify',
+        params: { email: account, firstName: capitalize(firstName), phone },
+      } as any);
+    } catch (e: any) {
+      Alert.alert('Sign up failed', errorMessage(e, "We couldn't create your account. Please try again."));
     } finally {
       setLoading(false);
     }
-    await addNotification({ icon: '⭐', bg: 'rgba(201,168,76,0.15)', title: 'Welcome to TransitHub!', msg: `Hi ${capitalize(firstName)}, book your first intercity ticket and travel in comfort across Ghana.`, time: 'Just now' });
-    router.replace('/(tabs)/home');
   };
 
   const styles = getStyles(colors);
@@ -66,7 +64,13 @@ export default function Register() {
       <TextInput style={styles.input} placeholder="First Name *" placeholderTextColor={colors.gray} value={firstName} onChangeText={setFirstName} />
       <TextInput style={styles.input} placeholder="Middle Name (optional)" placeholderTextColor={colors.gray} value={middleName} onChangeText={setMiddleName} />
       <TextInput style={styles.input} placeholder="Surname *" placeholderTextColor={colors.gray} value={surname} onChangeText={setSurname} />
-      <TextInput style={styles.input} placeholder="Email address" placeholderTextColor={colors.gray} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+      <TextInput style={styles.input} placeholder="Email address" placeholderTextColor={colors.gray} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} value={email} onChangeText={setEmail} />
+      {email.trim().length > 0 && !emailValid && (
+        <Text style={[styles.hint, { color: colors.orange }]}>Enter a valid email address</Text>
+      )}
+      {emailValid && (
+        <Text style={[styles.hint, { color: colors.text2 }]}>We'll send a 6-digit code here to confirm it's yours</Text>
+      )}
       <TextInput style={styles.input} placeholder="🇬🇭 +233 Phone Number" placeholderTextColor={colors.gray} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
       <PasswordInput colors={colors} placeholder="Password" value={password} onChangeText={setPassword} />
       <Text style={[styles.hint, { color: password.length === 0 ? colors.text2 : passwordValid ? colors.green : colors.orange }]}>
