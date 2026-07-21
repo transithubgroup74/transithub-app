@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, errorMessage } from '../../services/api';
+import { addNotification } from '../../utils/notifications';
 import { useTheme } from '../../context/ThemeContext';
 import { darkColors } from '../../constants/theme';
 import PasswordInput from '../../components/PasswordInput';
@@ -35,13 +37,31 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // The account starts out unverified and no token is issued yet — it is
-      // handed over on the verify screen once they enter the emailed code.
-      await auth.register({ name: fullName, email: account, password, phone });
-      router.push({
-        pathname: '/(auth)/verify',
-        params: { email: account, firstName: capitalize(firstName), phone },
-      } as any);
+      const res = await auth.register({ name: fullName, email: account, password, phone });
+      const d = res.data || {};
+      if (d.token) {
+        // Email verification is switched off server-side, so the account is
+        // ready straight away and we're already signed in.
+        await AsyncStorage.setItem('token', d.token);
+        await AsyncStorage.setItem('userEmail', d.email || account);
+        await AsyncStorage.setItem('userName', d.name || fullName);
+        await AsyncStorage.setItem('userPhone', d.phone || phone);
+        await addNotification({
+          icon: '⭐',
+          bg: 'rgba(201,168,76,0.15)',
+          title: 'Welcome to TransitHub!',
+          msg: `Hi ${capitalize(firstName)}, book your first intercity ticket and travel in comfort across Ghana.`,
+          time: 'Just now',
+        });
+        router.replace('/(tabs)/home');
+      } else {
+        // Verification is on — the token is handed over on the verify screen
+        // once they enter the emailed code.
+        router.push({
+          pathname: '/(auth)/verify',
+          params: { email: account, firstName: capitalize(firstName), phone },
+        } as any);
+      }
     } catch (e: any) {
       Alert.alert('Sign up failed', errorMessage(e, "We couldn't create your account. Please try again."));
     } finally {
